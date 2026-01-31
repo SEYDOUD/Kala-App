@@ -1,0 +1,16 @@
+{
+  "name": "kala-backend",
+  "version": "1.0.0",
+  "description": "Backend API pour l'application de Kala",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["couture", "api"],
+  "author": "Kala Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
