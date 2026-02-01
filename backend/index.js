@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import de la connexion à la base de données
 const connectDB = require('./src/config/database');
+const authRoutes = require('./src/routes/auth.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,15 +19,18 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.get('/', (req, res) => {
   res.json({
-    message: '👋 Hello World from Backend!',
+    message: '👋 Bienvenue sur l\'API Kala App!',
     service: 'Kala App API',
     version: '1.0.0',
     database: 'MongoDB Atlas',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth'
+    },
     timestamp: new Date().toISOString()
   });
 });
 
-// Route de test pour vérifier la connexion DB
 app.get('/api/health', (req, res) => {
   const dbState = {
     0: 'Déconnecté',
@@ -46,6 +49,9 @@ app.get('/api/health', (req, res) => {
     }
   });
 });
+
+// Routes d'authentification
+app.use('/api/auth', authRoutes);
 
 // Gestion des erreurs 404
 app.use((req, res) => {
