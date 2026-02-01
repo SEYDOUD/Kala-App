@@ -1,16 +1,22 @@
 {
   "name": "kala-backend",
   "version": "1.0.0",
-  "description": "Backend API pour l'application de Kala",
+  "description": "Backend API pour l'application Kala",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
-  "keywords": ["couture", "api"],
-  "author": "Kala Team",
+  "keywords": ["kala", "api"],
+  "author": "Votre équipe",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "mongoose": "^8.0.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }

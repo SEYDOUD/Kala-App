@@ -1,0 +1,7 @@
+user : kala
+password : QbePfn7ahpBtWxO3
+
+user : kala_admin
+password : EGsDciqAN6KLBL6t
+
+mongodb+srv://kala_admin:EGsDciqAN6KLBL6t@kala-cluster.x2cxzbg.mongodb.net/?appName=kala-cluster

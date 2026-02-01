@@ -1,15 +1,41 @@
-FROM ghcr.io/cirruslabs/flutter:stable
+# Stage 1: Build
+FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
 
-COPY pubspec.* ./
+# Copier les fichiers de dépendances
+COPY pubspec.yaml pubspec.lock* ./
 
-RUN flutter pub get
+# Activer web et installer les dépendances
+RUN flutter config --enable-web && \
+    flutter pub get
 
+# Copier le reste du code
 COPY . .
 
-RUN flutter config --enable-web
+# Builder en mode release (sans --web-renderer qui n'existe plus)
+RUN flutter build web --release
 
-EXPOSE 8080
+# Stage 2: Servir avec Nginx
+FROM nginx:alpine
 
-CMD ["flutter", "run", "-d", "web-server", "--web-port", "8080", "--web-hostname", "0.0.0.0"]
+# Copier les fichiers buildés
+COPY --from=build /app/build/web /usr/share/nginx/html
+
+# Configuration Nginx simple
+COPY <<EOF /etc/nginx/conf.d/default.conf
+server {
+    listen 80;
+    server_name _;
+    
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files \$uri \$uri/ /index.html;
+    }
+}
+EOF
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
