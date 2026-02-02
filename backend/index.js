@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const connectDB = require('./src/config/database');
 const authRoutes = require('./src/routes/auth.routes');
+const modeleRoutes = require('./src/routes/modele.routes'); // ← AJOUT
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,8 +12,16 @@ const PORT = process.env.PORT || 3000;
 // Connexion à MongoDB Atlas
 connectDB();
 
+// Configuration CORS
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -25,7 +34,8 @@ app.get('/', (req, res) => {
     database: 'MongoDB Atlas',
     endpoints: {
       health: '/api/health',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      modeles: '/api/modeles' // ← AJOUT
     },
     timestamp: new Date().toISOString()
   });
@@ -52,6 +62,8 @@ app.get('/api/health', (req, res) => {
 
 // Routes d'authentification
 app.use('/api/auth', authRoutes);
+// Routes des modèles
+app.use('/api/modeles', modeleRoutes); // ← AJOUT
 
 // Gestion des erreurs 404
 app.use((req, res) => {
