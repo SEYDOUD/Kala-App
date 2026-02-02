@@ -11,7 +11,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # UI
   cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+
+  # State Management
+  provider: ^6.1.1
+
+  # HTTP & API
+  http: ^1.1.2
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # Web Storage
+  web: ^0.5.1
 
 dev_dependencies:
   flutter_test:

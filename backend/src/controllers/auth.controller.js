@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const Client = require('../models/Client');
 const Prestataire = require('../models/Prestataire');
 const Admin = require('../models/Admin');
+const Atelier = require('../models/Atelier'); // ← AJOUT ICI
 
 // Générer un token JWT
 const generateToken = (userId, userType) => {
@@ -13,7 +14,7 @@ const generateToken = (userId, userType) => {
   );
 };
 
-// Inscription Client
+// Inscription Client (reste identique)
 exports.registerClient = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -66,7 +67,7 @@ exports.registerClient = async (req, res) => {
   }
 };
 
-// Inscription Prestataire
+// Inscription Prestataire + Atelier (MODIFIÉ)
 exports.registerPrestataire = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -77,7 +78,15 @@ exports.registerPrestataire = async (req, res) => {
       });
     }
 
-    const { username, password, email, telephone } = req.body;
+    const { 
+      username, 
+      password, 
+      email, 
+      telephone,
+      nom_atelier,      // ← AJOUT
+      description,      // ← AJOUT
+      adresse          // ← AJOUT
+    } = req.body;
 
     // Vérifier si l'email ou le username existe déjà
     const existingPrestataire = await Prestataire.findOne({ $or: [{ email }, { username }] });
@@ -97,12 +106,23 @@ exports.registerPrestataire = async (req, res) => {
 
     await prestataire.save();
 
+    // Créer l'atelier associé au prestataire
+    const atelier = new Atelier({
+      id_prestataire: prestataire._id,
+      nom_atelier: nom_atelier || `Atelier de ${username}`, // Nom par défaut si non fourni
+      description: description || '',
+      adresse: adresse || ''
+    });
+
+    await atelier.save();
+
     // Générer le token
     const token = generateToken(prestataire._id, 'prestataire');
 
     res.status(201).json({
       message: 'Inscription réussie',
       user: prestataire.toJSON(),
+      atelier: atelier.toJSON(), // ← AJOUT : renvoyer aussi l'atelier
       userType: 'prestataire',
       token
     });
@@ -115,7 +135,7 @@ exports.registerPrestataire = async (req, res) => {
   }
 };
 
-// Connexion universelle (Client, Prestataire ou Admin)
+// Connexion universelle (reste identique)
 exports.login = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -159,12 +179,19 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Si c'est un prestataire, récupérer aussi son atelier
+    let atelier = null;
+    if (userType === 'prestataire') {
+      atelier = await Atelier.findOne({ id_prestataire: user._id });
+    }
+
     // Générer le token
     const token = generateToken(user._id, userType);
 
     res.json({
       message: 'Connexion réussie',
       user: user.toJSON(),
+      ...(atelier && { atelier: atelier.toJSON() }), // Ajouter l'atelier si c'est un prestataire
       userType,
       token
     });
@@ -180,9 +207,16 @@ exports.login = async (req, res) => {
 // Obtenir le profil de l'utilisateur connecté
 exports.getProfile = async (req, res) => {
   try {
+    // Si c'est un prestataire, récupérer aussi son atelier
+    let atelier = null;
+    if (req.userType === 'prestataire') {
+      atelier = await Atelier.findOne({ id_prestataire: req.userId });
+    }
+
     res.json({
       user: req.user,
-      userType: req.userType
+      userType: req.userType,
+      ...(atelier && { atelier: atelier.toJSON() })
     });
   } catch (error) {
     res.status(500).json({
