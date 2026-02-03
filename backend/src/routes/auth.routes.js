@@ -4,6 +4,12 @@ const { body } = require('express-validator');
 const authController = require('../controllers/auth.controller');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 
+const registerAdminValidation = [
+  body('username').trim().notEmpty().withMessage('Le nom d\'utilisateur est requis'),
+  body('email').isEmail().withMessage('Email invalide'),
+  body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères'),
+];
+
 // Validation pour l'inscription client
 const registerClientValidation = [
   body('prenom').trim().notEmpty().withMessage('Le prénom est requis'),
@@ -30,11 +36,13 @@ const loginValidation = [
 ];
 
 // Routes publiques
+router.post('/register/admin', registerAdminValidation, authController.registerAdmin);
 router.post('/register/client', registerClientValidation, authController.registerClient);
 router.post('/register/prestataire', registerPrestataireValidation, authController.registerPrestataire);
 router.post('/login', loginValidation, authController.login);
 
 // Routes protégées
 router.get('/profile', authMiddleware, authController.getProfile);
+
 
 module.exports = router;

@@ -14,6 +14,54 @@ const generateToken = (userId, userType) => {
   );
 };
 
+// ─── Inscription Admin ───────────────────────────────────────────
+exports.registerAdmin = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+
+    const { username, password, email, niveau } = req.body;
+
+    // Vérifier si un admin existe déjà avec cet email ou username
+    const existing = await Admin.findOne({ $or: [{ email }, { username }] });
+    if (existing) {
+      return res.status(409).json({
+        error: 'Cet email ou nom d\'utilisateur est déjà utilisé'
+      });
+    }
+
+    // Créer l'admin
+    const admin = new Admin({
+      username,
+      password,
+      email,
+      niveau: niveau || 'admin'
+    });
+
+    await admin.save();
+
+    const token = generateToken(admin._id, 'admin');
+
+    res.status(201).json({
+      message: 'Admin créé avec succès',
+      user: admin.toJSON(),
+      userType: 'admin',
+      token
+    });
+  } catch (error) {
+    console.error('Erreur lors de la création du admin:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la création du admin',
+      message: error.message
+    });
+  }
+};
+
 // Inscription Client (reste identique)
 exports.registerClient = async (req, res) => {
   try {
