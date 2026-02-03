@@ -5,6 +5,7 @@ require('dotenv').config();
 const connectDB = require('./src/config/database');
 const authRoutes = require('./src/routes/auth.routes');
 const modeleRoutes = require('./src/routes/modele.routes'); // ← AJOUT
+const uploadRoutes = require('./src/routes/upload.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,6 +65,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 // Routes des modèles
 app.use('/api/modeles', modeleRoutes); // ← AJOUT
+// Routes d'upload
+app.use('/api/upload', uploadRoutes);
 
 // Gestion des erreurs 404
 app.use((req, res) => {
