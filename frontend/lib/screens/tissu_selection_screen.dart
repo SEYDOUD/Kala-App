@@ -198,10 +198,12 @@ class _TissuSelectionScreenState extends State<TissuSelectionScreen> {
                 ),
 
               // ─── Filtres genre ────────────────────────────────
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
+              Container(
+                height: 65,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     _buildGenreFilter('Tous', 'tous', tissuProvider),
                     const SizedBox(width: 8),
@@ -497,7 +499,7 @@ class _TissuSelectionScreenState extends State<TissuSelectionScreen> {
     return InkWell(
       onTap: () => provider.setGenre(value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFFFA500) : Colors.white,
           borderRadius: BorderRadius.circular(18),

@@ -61,7 +61,7 @@ class AuthProvider with ChangeNotifier {
       final userType = response['userType'];
       _user = UserModel.fromJson(response['user'], userType);
 
-      await AuthService.saveAuthData(token: token, user: _user!);
+      await AuthService.saveAuthData(token: token, user: _user!.toJson());
 
       _isLoading = false;
       notifyListeners();
@@ -107,7 +107,7 @@ class AuthProvider with ChangeNotifier {
 
       await AuthService.saveAuthData(
         token: token,
-        user: _user!,
+        user: _user!.toJson(),
         atelier: atelier, // ← AJOUT
       );
 
@@ -141,7 +141,7 @@ class AuthProvider with ChangeNotifier {
       final userType = response['userType'];
       _user = UserModel.fromJson(response['user'], userType);
 
-      await AuthService.saveAuthData(token: token, user: _user!);
+      await AuthService.saveAuthData(token: token, user: _user!.toJson());
 
       _isLoading = false;
       notifyListeners();

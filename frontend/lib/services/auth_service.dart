@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:convert'; // ← AJOUTEZ CETTE LIGNE
 import '../config/app_config.dart';
 import '../models/user_model.dart';
 import 'api_service.dart';
@@ -70,15 +71,20 @@ class AuthService {
   // Sauvegarder les données de connexion
   static Future<void> saveAuthData({
     required String token,
-    required UserModel user,
-    Map<String, dynamic>? atelier, // ← AJOUT
+    required Map<String, dynamic> user,
+    String? userType,
+    Map<String, dynamic>? atelier,
   }) async {
     await StorageService.saveToken(token);
-    await StorageService.saveUser(user.toJson(), user.userType);
+    await StorageService.saveUser(jsonEncode(user)); // ← CONVERTIR EN STRING
 
-    // Sauvegarder l'atelier si présent
+    if (userType != null) {
+      await StorageService.saveUserType(userType);
+    }
+
     if (atelier != null) {
-      await StorageService.setString('atelier_data', jsonEncode(atelier));
+      await StorageService.saveAtelier(
+          jsonEncode(atelier)); // ← CONVERTIR EN STRING
     }
   }
 
@@ -92,19 +98,17 @@ class AuthService {
     final userData = await StorageService.getUser();
     final userType = await StorageService.getUserType();
 
-    if (userData != null && userType != null) {
-      return UserModel.fromJson(userData, userType);
-    }
-    return null;
+    if (userData == null || userType == null) return null;
+
+    final Map<String, dynamic> userMap = jsonDecode(userData);
+    return UserModel.fromJson(userMap, userType);
   }
 
   // Récupérer l'atelier
   static Future<Map<String, dynamic>?> getAtelier() async {
-    final atelierData = await StorageService.getString('atelier_data');
-    if (atelierData != null) {
-      return jsonDecode(atelierData);
-    }
-    return null;
+    final atelierData = await StorageService.getAtelier();
+    if (atelierData == null) return null;
+    return jsonDecode(atelierData); // ← DÉCODER LE JSON
   }
 
   // Vérifier si l'utilisateur est connecté
