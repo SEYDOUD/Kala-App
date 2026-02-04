@@ -1,4 +1,4 @@
-# 🧵 Application de Couture d'Habits Culturels
+# 🧵 Application KALA
 
 ## 📋 Prérequis
 
