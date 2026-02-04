@@ -32,12 +32,12 @@ class ModeleCard extends StatelessWidget {
                   child: modele.imageUrl != null
                       ? Image.network(
                           modele.imageUrl!,
-                          height: 180,
+                          height: 170,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              height: 180,
+                              height: 170,
                               color: Colors.grey[300],
                               child: const Icon(
                                 Icons.image_not_supported,
@@ -92,50 +92,58 @@ class ModeleCard extends StatelessWidget {
           // ─── Tout le reste EN DEHORS du Card ──────────────────
           const SizedBox(height: 8),
 
-          // Note
-          Row(
-            children: [
-              ...List.generate(
-                5,
-                (index) => Icon(
-                  index < modele.noteMoyenne.round()
-                      ? Icons.star
-                      : Icons.star_border,
-                  size: 12,
-                  color: const Color(0xFFFFA500),
+          Padding(
+            padding: const EdgeInsets.only(left: 8), // ← AJOUTÉ ICI
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Note
+                Row(
+                  children: [
+                    ...List.generate(
+                      5,
+                      (index) => Icon(
+                        index < modele.noteMoyenne.round()
+                            ? Icons.star
+                            : Icons.star_border,
+                        size: 12,
+                        color: const Color(0xFFFFA500),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '(${modele.nombreAvis})',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '(${modele.nombreAvis})',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
+                const SizedBox(height: 4),
+
+                // Nom
+                Text(
+                  modele.nom,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
+                const SizedBox(height: 2),
 
-          // Nom
-          Text(
-            modele.nom,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-
-          // Prix
-          Text(
-            modele.prixFormate,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFFFA500),
+                // Prix
+                Text(
+                  modele.prixFormate,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFA500),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
