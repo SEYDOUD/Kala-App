@@ -1,10 +1,12 @@
-# 🧵 Application de Couture d'Habits Culturels
+# 🧵 Application KALA
 
 ## 📋 Prérequis
 
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Git](https://git-scm.com/)
+- [Flutter](https://docs.flutter.dev/install)
+- [Node JS](https://nodejs.org/en)
 
 ## 🚀 Démarrage rapide
 
@@ -12,7 +14,7 @@
 
 ```bash
 git clone <url-de-votre-repo>
-cd couture-app
+cd Kala-App
 ```
 
 ### 2. Lancer l'application
@@ -35,7 +37,7 @@ docker-compose down
 ## 📁 Structure du projet
 
 ```
-couture-app/
+Kala-App/
 ├── backend/              # API Node.js
 ├── frontend/             # Application Flutter
 ├── docker-compose.yml
