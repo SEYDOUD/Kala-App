@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/modele_provider.dart';
 import 'providers/tissu_provider.dart';
 import 'providers/panier_provider.dart';
+import 'providers/mesure_provider.dart'; // ← AJOUT
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ModeleProvider()),
         ChangeNotifierProvider(create: (_) => TissuProvider()),
         ChangeNotifierProvider(create: (_) => PanierProvider()),
+        ChangeNotifierProvider(create: (_) => MesureProvider()), // ← AJOUT
       ],
       child: MaterialApp(
         title: 'Kala App',

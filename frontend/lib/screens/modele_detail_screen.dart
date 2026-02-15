@@ -4,6 +4,7 @@ import '../models/modele_model.dart';
 import '../services/modele_service.dart';
 import '../providers/panier_provider.dart';
 import 'tissu_selection_screen.dart';
+import 'mesure_informations_screen.dart';
 
 class ModeleDetailScreen extends StatefulWidget {
   final String modeleId;
@@ -487,7 +488,15 @@ class _ModeleDetailScreenState extends State<ModeleDetailScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: Valider commande
+                  // Aller à la prise de mesures
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MesureInformationsScreen(
+                        panierItemIndex: _panierItemIndex ?? 0,
+                      ),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),

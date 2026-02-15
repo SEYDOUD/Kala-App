@@ -7,6 +7,7 @@ const authRoutes = require('./src/routes/auth.routes');
 const modeleRoutes = require('./src/routes/modele.routes'); // ← AJOUT
 const uploadRoutes = require('./src/routes/upload.routes');
 const tissuRoutes = require('./src/routes/tissu.routes');
+const mesureRoutes = require('./src/routes/mesure.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,6 +71,8 @@ app.use('/api/modeles', modeleRoutes); // ← AJOUT
 app.use('/api/upload', uploadRoutes);
 // Routes tissu
 app.use('/api/tissus', tissuRoutes);
+// Routes Mesure
+app.use('/api/mesures', mesureRoutes);
 
 // Gestion des erreurs 404
 app.use((req, res) => {
