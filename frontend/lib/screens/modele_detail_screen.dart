@@ -435,77 +435,116 @@ class _ModeleDetailScreenState extends State<ModeleDetailScreen> {
       ),
 
       // ── Bottom bar : quantité + Commander ──────────────────────
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
+      // ── Bottom bar : quantité + Commander ──────────────────────
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Message si aucun tissu sélectionné
+          if (tissusChoisis.isEmpty)
             Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              color: Colors.orange[100],
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: () {
-                      if (_quantite > 1) {
-                        setState(() {
-                          _quantite--;
-                        });
-                      }
-                    },
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.orange[800],
+                    size: 20,
                   ),
-                  Text(
-                    '$_quantite',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Veuillez sélectionner au moins un tissu',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.orange[900],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      setState(() {
-                        _quantite++;
-                      });
-                    },
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  // Aller à la prise de mesures
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MesureInformationsScreen(
-                        panierItemIndex: _panierItemIndex ?? 0,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+
+          // Bottom bar principale
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
                 ),
-                child: const Text('Commander'),
-              ),
+              ],
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove),
+                        onPressed: () {
+                          if (_quantite > 1) {
+                            setState(() {
+                              _quantite--;
+                            });
+                          }
+                        },
+                      ),
+                      Text(
+                        '$_quantite',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          setState(() {
+                            _quantite++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: tissusChoisis.isEmpty
+                        ? null // Désactivé si aucun tissu
+                        : () {
+                            // Aller au nouvel écran de départ
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MesureInformationsScreen(
+                                  panierItemIndex: _panierItemIndex ?? 0,
+                                ),
+                              ),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      disabledBackgroundColor: Colors.grey[300],
+                      disabledForegroundColor: Colors.grey[500],
+                    ),
+                    child: const Text('Commander'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

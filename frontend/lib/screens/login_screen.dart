@@ -41,10 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      // Navigation vers la page d'accueil
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      // Vérifier si on vient d'une autre page
+      if (Navigator.canPop(context)) {
+        // Retourner true pour indiquer que la connexion a réussi
+        Navigator.pop(context, true);
+      } else {
+        // Si pas de page précédente, aller à l'accueil
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       // Afficher l'erreur
       ScaffoldMessenger.of(context).showSnackBar(

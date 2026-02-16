@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/mesure_provider.dart';
 import '../providers/panier_provider.dart';
+import '../providers/auth_provider.dart';
+import '../screens/login_screen.dart';
 
 class MesureManuelScreen extends StatefulWidget {
   final int panierItemIndex;
@@ -59,6 +61,47 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
   Future<void> _enregistrer() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // ─── Vérifier l'authentification ────────────────────────
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (!authProvider.isAuthenticated) {
+      // Afficher un dialog pour se connecter
+      final bool? shouldLogin = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Connexion requise'),
+          content: const Text(
+            'Vous devez être connecté pour enregistrer vos mesures. Voulez-vous vous connecter maintenant ?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Se connecter'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldLogin == true && mounted) {
+        // Aller à la page de connexion
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+
+        // Si la connexion réussit, continuer l'enregistrement
+        if (result == true && mounted) {
+          _enregistrer(); // Rappeler la fonction après connexion
+        }
+      }
+      return;
+    }
+
+    // ─── Utilisateur connecté, on continue ──────────────────
     setState(() {
       _isLoading = true;
     });

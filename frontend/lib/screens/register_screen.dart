@@ -89,11 +89,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      // Navigation vers la page d'accueil
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (route) => false,
-      );
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       // Afficher l'erreur
       ScaffoldMessenger.of(context).showSnackBar(
