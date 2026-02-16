@@ -63,11 +63,11 @@ class _MesureChoiceScreenState extends State<MesureChoiceScreen> {
 
                 // Option 1 : IA (désactivée pour l'instant)
                 _buildOptionCard(
-                  icon: Icons.camera_alt_outlined,
+                  icon: Icons.smart_toy,
                   title: 'Prendre avec l\'IA',
-                  subtitle: 'Utilisez l\'intelligence artificielle',
+                  subtitle: 'Mesurez-vous à Distance',
                   isEnabled: false,
-                  badge: 'Bientôt disponible',
+                  badge: 'Bientôt',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -83,7 +83,7 @@ class _MesureChoiceScreenState extends State<MesureChoiceScreen> {
                 _buildOptionCard(
                   icon: Icons.edit_outlined,
                   title: 'Saisir manuellement',
-                  subtitle: 'Entrez vos mesures vous-même',
+                  subtitle: 'Entrez vos mesures',
                   isEnabled: true,
                   onTap: () {
                     Navigator.push(
@@ -107,7 +107,7 @@ class _MesureChoiceScreenState extends State<MesureChoiceScreen> {
                 if (mesureProvider.mesures.isNotEmpty)
                   _buildOptionCard(
                     icon: Icons.history_outlined,
-                    title: 'Choisir une mesure existante',
+                    title: 'Choisir une mesure',
                     subtitle:
                         '${mesureProvider.mesures.length} mesure${mesureProvider.mesures.length > 1 ? 's' : ''} disponible${mesureProvider.mesures.length > 1 ? 's' : ''}',
                     isEnabled: true,

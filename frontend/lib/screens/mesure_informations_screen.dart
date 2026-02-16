@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/mesure_provider.dart';
 import 'mesure_choice_screen.dart';
+import 'mesure_existante_screen.dart';
 
 class MesureInformationsScreen extends StatefulWidget {
   final int panierItemIndex;
@@ -22,6 +25,15 @@ class _MesureInformationsScreenState extends State<MesureInformationsScreen> {
   final TextEditingController _tailleController = TextEditingController();
   final TextEditingController _poidsController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Charger les mesures existantes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<MesureProvider>(context, listen: false).loadMesures();
+    });
+  }
 
   @override
   void dispose() {
@@ -317,6 +329,54 @@ class _MesureInformationsScreenState extends State<MesureInformationsScreen> {
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
+              ),
+
+              // Bouton "Choisir une mesure existante" (si disponible)
+              Consumer<MesureProvider>(
+                builder: (context, mesureProvider, child) {
+                  if (mesureProvider.mesures.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MesureExistanteScreen(
+                                  panierItemIndex: widget.panierItemIndex,
+                                ),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: const BorderSide(
+                              color: Color(0xFFFFA500),
+                              width: 2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Choisir une mesure existante (${mesureProvider.mesures.length})',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFFFFA500),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
