@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/mesure_provider.dart';
 import '../models/mesure_model.dart';
+import '../widgets/note_commande_dialog.dart';
+import 'panier_screen.dart';
 
 class MesureExistanteScreen extends StatefulWidget {
   final int panierItemIndex;
@@ -29,7 +31,7 @@ class _MesureExistanteScreenState extends State<MesureExistanteScreen> {
       return;
     }
 
-    // TODO: Associer la mesure à la commande
+    // Associer la mesure à la commande (TODO: sauvegarder l'ID de la mesure)
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Mesure sélectionnée avec succès !'),
@@ -37,8 +39,20 @@ class _MesureExistanteScreenState extends State<MesureExistanteScreen> {
       ),
     );
 
-    // Retourner à la page du modèle
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // Aller à la page de note de commande
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const PanierScreen(),
+      ),
+      (route) => route.isFirst,
+    );
+
+    // Afficher la popup après un court délai
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        showNoteCommandeDialog(context, widget.panierItemIndex);
+      }
+    });
   }
 
   @override

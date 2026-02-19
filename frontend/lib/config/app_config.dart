@@ -4,8 +4,8 @@ class AppConfig {
 
   // API Configuration
   // Utiliser l'IP de la machine hôte pour accéder au backend (SEYDOU)
-  static const String baseUrl = 'http://192.168.100.167:3000';
-  // static const String baseUrl = 'http://localhost:3000';
+  // static const String baseUrl = 'http://192.168.100.167:3000';
+  static const String baseUrl = 'http://localhost:3000';
   static const String apiUrl = '$baseUrl/api';
 
   // Endpoints

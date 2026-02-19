@@ -18,13 +18,15 @@ class TissuPanier {
 // Représente un item complet dans le panier (modèle + tissus choisis + quantité)
 class ItemPanier {
   final ModeleModel modele;
-  List<TissuPanier> tissusChoisis;
   int quantite;
+  List<TissuPanier> tissusChoisis;
+  String? note; // ← AJOUTEZ CETTE LIGNE
 
   ItemPanier({
     required this.modele,
-    List<TissuPanier>? tissusChoisis,
     this.quantite = 1,
+    List<TissuPanier>? tissusChoisis,
+    this.note, // ← AJOUTEZ CETTE LIGNE
   }) : tissusChoisis = tissusChoisis ?? [];
 
   double get prix => modele.prix;
@@ -115,6 +117,14 @@ class PanierProvider with ChangeNotifier {
         }
         notifyListeners();
       }
+    }
+  }
+
+  // Mettre à jour la note d'un item
+  void updateItemNote(int index, String note) {
+    if (index >= 0 && index < _items.length) {
+      _items[index].note = note;
+      notifyListeners();
     }
   }
 

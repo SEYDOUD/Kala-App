@@ -4,6 +4,8 @@ import '../providers/mesure_provider.dart';
 import '../providers/panier_provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import '../widgets/note_commande_dialog.dart';
+import 'panier_screen.dart';
 
 class MesureManuelScreen extends StatefulWidget {
   final int panierItemIndex;
@@ -150,8 +152,20 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
         ),
       );
 
-      // Retourner à la page du modèle
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Aller à la page de note de commande
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const PanierScreen(),
+        ),
+        (route) => route.isFirst,
+      );
+
+      // Afficher la popup après un court délai
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          showNoteCommandeDialog(context, widget.panierItemIndex);
+        }
+      });
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
