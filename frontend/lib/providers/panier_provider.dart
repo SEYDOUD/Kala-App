@@ -20,13 +20,15 @@ class ItemPanier {
   final ModeleModel modele;
   int quantite;
   List<TissuPanier> tissusChoisis;
-  String? note; // ← AJOUTEZ CETTE LIGNE
+  String? note;
+  String? mesureId; // ← AJOUTÉ
 
   ItemPanier({
     required this.modele,
     this.quantite = 1,
     List<TissuPanier>? tissusChoisis,
-    this.note, // ← AJOUTEZ CETTE LIGNE
+    this.note,
+    this.mesureId, // ← AJOUTÉ
   }) : tissusChoisis = tissusChoisis ?? [];
 
   double get prix => modele.prix;
@@ -51,6 +53,14 @@ class PanierProvider with ChangeNotifier {
   void addItem(ItemPanier item) {
     _items.add(item);
     notifyListeners();
+  }
+
+  // Mettre à jour la mesure d'un item
+  void updateItemMesure(int index, String mesureId) {
+    if (index >= 0 && index < _items.length) {
+      _items[index].mesureId = mesureId;
+      notifyListeners();
+    }
   }
 
   // Supprimer un item du panier

@@ -11,6 +11,7 @@ class MesureChoiceScreen extends StatefulWidget {
   final double tailleCm;
   final double poidsKg;
   final int age;
+  final bool isModification;
 
   const MesureChoiceScreen({
     Key? key,
@@ -20,6 +21,7 @@ class MesureChoiceScreen extends StatefulWidget {
     required this.tailleCm,
     required this.poidsKg,
     required this.age,
+    this.isModification = false,
   }) : super(key: key);
 
   @override
@@ -96,6 +98,7 @@ class _MesureChoiceScreenState extends State<MesureChoiceScreen> {
                           tailleCm: widget.tailleCm,
                           poidsKg: widget.poidsKg,
                           age: widget.age,
+                          isModification: widget.isModification,
                         ),
                       ),
                     );

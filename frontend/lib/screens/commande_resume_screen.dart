@@ -5,14 +5,29 @@ import '../providers/mesure_provider.dart';
 import '../widgets/note_commande_dialog.dart';
 import 'mesure_informations_screen.dart';
 import 'mesure_existante_screen.dart';
+import '../models/mesure_model.dart';
 
-class CommandeResumeScreen extends StatelessWidget {
+class CommandeResumeScreen extends StatefulWidget {
   final int panierItemIndex;
 
   const CommandeResumeScreen({
     Key? key,
     required this.panierItemIndex,
   }) : super(key: key);
+
+  @override
+  State<CommandeResumeScreen> createState() => _CommandeResumeScreenState();
+}
+
+class _CommandeResumeScreenState extends State<CommandeResumeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Charger les mesures
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<MesureProvider>(context, listen: false).loadMesures();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +46,13 @@ class CommandeResumeScreen extends StatelessWidget {
       ),
       body: Consumer<PanierProvider>(
         builder: (context, panierProvider, child) {
-          if (panierItemIndex >= panierProvider.items.length) {
+          if (widget.panierItemIndex >= panierProvider.items.length) {
             return const Center(
               child: Text('Article non trouvé'),
             );
           }
 
-          final item = panierProvider.items[panierItemIndex];
+          final item = panierProvider.items[widget.panierItemIndex];
 
           return Column(
             children: [
@@ -108,7 +123,7 @@ class CommandeResumeScreen extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined, size: 20),
                 color: const Color(0xFFFFA500),
                 onPressed: () {
-                  showNoteCommandeDialog(context, panierItemIndex);
+                  showNoteCommandeDialog(context, widget.panierItemIndex);
                 },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -332,82 +347,103 @@ class CommandeResumeScreen extends StatelessWidget {
   }
 
   Widget _buildMesureCard(BuildContext context, ItemPanier item) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.orange[50]!, Colors.orange[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Consumer<MesureProvider>(
+      builder: (context, mesureProvider, child) {
+        // Récupérer la mesure depuis l'ID
+        MesureModel? mesure;
+        if (item.mesureId != null) {
+          try {
+            mesure = mesureProvider.mesures.firstWhere(
+              (m) => m.id == item.mesureId,
+            );
+          } catch (e) {
+            // Mesure non trouvée
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.orange[50]!, Colors.orange[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFA500),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.straighten,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Mesure - Seydou',
-                      style: TextStyle(
-                        fontSize: 15,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFA500),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.straighten,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mesure != null
+                              ? 'Mesure - ${mesure.nomMesure}'
+                              : 'Mesure non définie',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          mesure != null
+                              ? '${mesure.genre.toUpperCase()} • ${mesure.tailleCm.toInt()}cm • ${mesure.poidsKg.toInt()}kg'
+                              : 'Veuillez choisir une mesure',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: () {
+                      _showMesureOptions(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      side:
+                          const BorderSide(color: Color(0xFFFFA500), width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      mesure != null ? 'Modifier' : 'Choisir',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFFFFA500),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Mesure personnalisée',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              OutlinedButton(
-                onPressed: () {
-                  _showMesureOptions(context);
-                },
-                style: OutlinedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  side: const BorderSide(color: Color(0xFFFFA500), width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                child: const Text(
-                  'Modifier',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFFFA500),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -565,7 +601,9 @@ class CommandeResumeScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => MesureExistanteScreen(
-                          panierItemIndex: panierItemIndex),
+                        panierItemIndex: widget.panierItemIndex,
+                        isModification: true,
+                      ),
                     ),
                   );
                 },
@@ -601,7 +639,9 @@ class CommandeResumeScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => MesureInformationsScreen(
-                        panierItemIndex: panierItemIndex),
+                      panierItemIndex: widget.panierItemIndex,
+                      isModification: true,
+                    ),
                   ),
                 );
               },

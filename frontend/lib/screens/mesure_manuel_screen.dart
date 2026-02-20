@@ -14,6 +14,7 @@ class MesureManuelScreen extends StatefulWidget {
   final double tailleCm;
   final double poidsKg;
   final int age;
+  final bool isModification;
 
   const MesureManuelScreen({
     Key? key,
@@ -23,6 +24,7 @@ class MesureManuelScreen extends StatefulWidget {
     required this.tailleCm,
     required this.poidsKg,
     required this.age,
+    this.isModification = false,
   }) : super(key: key);
 
   @override
@@ -145,6 +147,14 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
     });
 
     if (success && mounted) {
+      // Récupérer la mesure créée (la dernière)
+      final mesureCreee = mesureProvider.mesures.first;
+
+      // Sauvegarder l'ID dans le panier
+      final panierProvider =
+          Provider.of<PanierProvider>(context, listen: false);
+      panierProvider.updateItemMesure(widget.panierItemIndex, mesureCreee.id);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Mesures enregistrées avec succès !'),
@@ -152,7 +162,14 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
         ),
       );
 
-      // Aller à la page de note de commande
+      // Si c'est une modification, retourner à la page de résumé
+      if (widget.isModification) {
+        Navigator.of(context).popUntil((route) =>
+            route.settings.name == '/commande_resume' || route.isFirst);
+        return;
+      }
+
+      // Sinon, aller à la page de note de commande (nouveau flow)
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => const PanierScreen(),

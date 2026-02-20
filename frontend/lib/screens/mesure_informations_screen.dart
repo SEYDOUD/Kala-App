@@ -6,10 +6,12 @@ import 'mesure_existante_screen.dart';
 
 class MesureInformationsScreen extends StatefulWidget {
   final int panierItemIndex;
+  final bool isModification;
 
   const MesureInformationsScreen({
     Key? key,
     required this.panierItemIndex,
+    this.isModification = false,
   }) : super(key: key);
 
   @override
@@ -57,6 +59,7 @@ class _MesureInformationsScreenState extends State<MesureInformationsScreen> {
             tailleCm: double.parse(_tailleController.text),
             poidsKg: double.parse(_poidsController.text),
             age: int.parse(_ageController.text),
+            isModification: widget.isModification,
           ),
         ),
       );
@@ -350,6 +353,7 @@ class _MesureInformationsScreenState extends State<MesureInformationsScreen> {
                               MaterialPageRoute(
                                 builder: (_) => MesureExistanteScreen(
                                   panierItemIndex: widget.panierItemIndex,
+                                  isModification: widget.isModification,
                                 ),
                               ),
                             );

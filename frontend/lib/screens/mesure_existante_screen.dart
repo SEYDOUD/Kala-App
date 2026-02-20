@@ -4,13 +4,16 @@ import '../providers/mesure_provider.dart';
 import '../models/mesure_model.dart';
 import '../widgets/note_commande_dialog.dart';
 import 'panier_screen.dart';
+import '../providers/panier_provider.dart';
 
 class MesureExistanteScreen extends StatefulWidget {
   final int panierItemIndex;
+  final bool isModification; // ← AJOUTÉ
 
   const MesureExistanteScreen({
     Key? key,
     required this.panierItemIndex,
+    this.isModification = false, // ← AJOUTÉ (par défaut false)
   }) : super(key: key);
 
   @override
@@ -31,15 +34,24 @@ class _MesureExistanteScreenState extends State<MesureExistanteScreen> {
       return;
     }
 
-    // Associer la mesure à la commande (TODO: sauvegarder l'ID de la mesure)
+    // Sauvegarder l'ID de la mesure dans le panier
+    final panierProvider = Provider.of<PanierProvider>(context, listen: false);
+    panierProvider.updateItemMesure(widget.panierItemIndex, _selectedMesureId!);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Mesure sélectionnée avec succès !'),
+        content: Text('Mesure modifiée avec succès !'),
         backgroundColor: Colors.green,
       ),
     );
 
-    // Aller à la page de note de commande
+    // Si c'est une modification, retourner juste en arrière
+    if (widget.isModification) {
+      Navigator.pop(context);
+      return;
+    }
+
+    // Sinon, aller à la page de note de commande (nouveau flow)
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => const PanierScreen(),

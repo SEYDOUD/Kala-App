@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:convert'; // ← AJOUTEZ CETTE LIGNE
-import '../config/app_config.dart';
+// import 'dart:convert'; // ← AJOUTEZ CETTE LIGNE
+// import '../config/app_config.dart';
 import '../models/user_model.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
