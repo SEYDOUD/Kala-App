@@ -4,6 +4,7 @@ import '../providers/panier_provider.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'commande_resume_screen.dart';
+import '../widgets/mode_paiement_bottomsheet.dart';
 
 class PanierScreen extends StatelessWidget {
   const PanierScreen({Key? key}) : super(key: key);
@@ -514,12 +515,7 @@ class PanierScreen extends StatelessWidget {
       return;
     }
 
-    // TODO: Aller à la page de paiement
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Paiement en cours de développement...'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    // Ouvrir le bottom sheet de sélection du mode de paiement
+    showModePaiementBottomSheet(context);
   }
 }

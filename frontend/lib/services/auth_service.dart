@@ -131,4 +131,22 @@ class AuthService {
     }
     return await ApiService.get('/auth/profile', token: token);
   }
+
+  // Modifier le mot de passe
+  static Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Non authentifié');
+    }
+
+    final data = {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    };
+
+    return await ApiService.put('/auth/change-password', data, token: token);
+  }
 }

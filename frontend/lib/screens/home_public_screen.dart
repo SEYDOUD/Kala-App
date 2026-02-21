@@ -6,6 +6,9 @@ import '../widgets/modele_card.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'modele_detail_screen.dart';
+import '../providers/panier_provider.dart';
+import 'panier_screen.dart';
+import 'parametres_screen.dart';
 
 class HomePublicScreen extends StatefulWidget {
   const HomePublicScreen({Key? key}) : super(key: key);
@@ -53,25 +56,74 @@ class _HomePublicScreenState extends State<HomePublicScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Image.network(
-          'https://via.placeholder.com/100x40/FFA500/FFFFFF?text=KALA',
-          height: 40,
-          errorBuilder: (context, error, stackTrace) {
-            return const Text(
-              'KALA',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFFFA500),
-              ),
+        title: const Text(
+          'KALA',
+          style: TextStyle(
+            color: Color(0xFFFFA500),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          // ← AJOUTÉ
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ParametresScreen()),
             );
           },
         ),
-        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
-            onPressed: () {
-              // TODO: Panier
+          // Icône panier avec badge
+          Consumer<PanierProvider>(
+            builder: (context, panierProvider, child) {
+              final itemCount = panierProvider.items.length;
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PanierScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (itemCount > 0)
+                    Positioned(
+                      right: 4,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Center(
+                          child: Text(
+                            itemCount > 9 ? '9+' : '$itemCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
           ),
           IconButton(

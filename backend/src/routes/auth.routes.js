@@ -44,5 +44,18 @@ router.post('/login', loginValidation, authController.login);
 // Routes protégées
 router.get('/profile', authMiddleware, authController.getProfile);
 
+// Modifier le mot de passe (route protégée)
+router.put(
+  '/change-password',
+  authMiddleware,
+  [
+    body('oldPassword').notEmpty().withMessage('Ancien mot de passe requis'),
+    body('newPassword')
+      .isLength({ min: 6 })
+      .withMessage('Le nouveau mot de passe doit contenir au moins 6 caractères'),
+  ],
+  authController.changePassword
+);
+
 
 module.exports = router;

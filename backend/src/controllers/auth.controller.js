@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Client = require('../models/Client');
 const Prestataire = require('../models/Prestataire');
@@ -59,6 +60,45 @@ exports.registerAdmin = async (req, res) => {
       error: 'Erreur lors de la création du admin',
       message: error.message
     });
+  }
+};
+
+// Changement de Mot de mot de passe
+// Modifier le mot de passe
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.userId;
+
+    // Récupérer l'utilisateur selon le type AVEC le mot de passe
+    let user;
+    if (req.userType === 'client') {
+      user = await Client.findById(userId).select('+password'); // ← AJOUTÉ .select('+password')
+    } else if (req.userType === 'atelier') {
+      user = await Atelier.findById(userId).select('+password'); // ← AJOUTÉ .select('+password')
+    } else {
+      return res.status(400).json({ error: 'Type d\'utilisateur invalide' });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier l'ancien mot de passe
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+    }
+
+    // Hasher le nouveau mot de passe
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: 'Mot de passe modifié avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de la modification du mot de passe:', error);
+    res.status(500).json({ error: error.message });
   }
 };
 
