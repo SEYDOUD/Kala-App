@@ -40,7 +40,10 @@ class CommandeService {
       throw Exception('Non authentifié');
     }
 
-    return await ApiService.get('/commandes', token: token);
+    print('🔍 Fetching commandes with token: ${token.substring(0, 20)}...');
+    final response = await ApiService.get('/commandes', token: token);
+    print('📦 Commandes reçues: $response');
+    return response;
   }
 
   // Récupérer une commande par ID

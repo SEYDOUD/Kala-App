@@ -9,6 +9,7 @@ import 'modele_detail_screen.dart';
 import '../providers/panier_provider.dart';
 import 'panier_screen.dart';
 import 'parametres_screen.dart';
+import 'mes_commandes_screen.dart';
 
 class HomePublicScreen extends StatefulWidget {
   const HomePublicScreen({Key? key}) : super(key: key);
@@ -309,7 +310,12 @@ class _HomePublicScreenState extends State<HomePublicScreen> {
           ),
         ],
         onTap: (index) {
-          if (index == 3) {
+          if (index == 2) {
+            // Commandes
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MesCommandesScreen()),
+            );
+          } else if (index == 3) {
             // Profil
             if (authProvider.isAuthenticated) {
               Navigator.of(context).push(
@@ -321,7 +327,7 @@ class _HomePublicScreenState extends State<HomePublicScreen> {
               );
             }
           }
-          // TODO: Implémenter les autres onglets
+          // TODO: Implémenter les autres onglets (Favoris)
         },
       ),
     );

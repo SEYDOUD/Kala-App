@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../screens/mes_commandes_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/commande_provider.dart';
 
 class CommandeSuccesDialog extends StatelessWidget {
   final String numeroCommande;
@@ -71,8 +74,21 @@ class CommandeSuccesDialog extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Fermer le dialog et retourner à l'accueil
+                  // Fermer le dialog
                   Navigator.of(context).popUntil((route) => route.isFirst);
+
+                  // Naviguer vers la page des commandes
+                  Navigator.of(context)
+                      .push(
+                    MaterialPageRoute(
+                      builder: (_) => const MesCommandesScreen(),
+                    ),
+                  )
+                      .then((_) {
+                    // Recharger les commandes après navigation
+                    Provider.of<CommandeProvider>(context, listen: false)
+                        .loadCommandes();
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFA500),
@@ -82,7 +98,7 @@ class CommandeSuccesDialog extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'OK',
+                  'Voir mes commandes',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

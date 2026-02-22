@@ -69,10 +69,17 @@ exports.processPayment = async (req, res) => {
     // Simuler le paiement (en production, appeler l'API Wave/Orange Money)
     // Pour le développement, on marque juste comme payé
     commande.statut_paiement = 'paye';
-    commande.statut = 'confirmee';
+    commande.statut = 'confirmee';  // ← TRÈS IMPORTANT
     commande.reference_paiement = `REF${Date.now()}`;
     
     await commande.save();
+
+    // Repopuler les données pour la réponse
+    await commande.populate([
+      { path: 'items.id_modele' },
+      { path: 'items.tissus.id_tissu' },
+      { path: 'items.id_mesure' }
+    ]);
 
     res.json({
       message: 'Paiement effectué avec succès',

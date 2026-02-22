@@ -70,6 +70,9 @@ class _PaiementWaveDialogState extends State<PaiementWaveDialog> {
           await CommandeService.createCommande(commandeData);
       final commandeId = responseCommande['commande']['_id'];
 
+      print('✅ Commande créée avec ID: $commandeId'); // ← AJOUTEZ
+      print('📦 Response complète: $responseCommande');
+
       // 2. Simuler le paiement Wave (en attendant l'intégration réelle)
       await Future.delayed(const Duration(seconds: 2));
 

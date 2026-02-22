@@ -31,7 +31,9 @@ class CommandeModel {
     return CommandeModel(
       id: json['_id'] ?? '',
       numeroCommande: json['numero_commande'] ?? '',
-      idClient: json['id_client'] ?? '',
+      idClient: json['id_client'] is String
+          ? json['id_client']
+          : (json['id_client']?['_id'] ?? ''), // ← CORRECTION ICI
       items: (json['items'] as List?)
               ?.map((item) => CommandeItem.fromJson(item))
               .toList() ??
@@ -80,14 +82,18 @@ class CommandeItem {
 
   factory CommandeItem.fromJson(Map<String, dynamic> json) {
     return CommandeItem(
-      idModele: json['id_modele'] ?? '',
+      idModele: json['id_modele'] is String
+          ? json['id_modele']
+          : (json['id_modele']?['_id'] ?? ''), // ← CORRECTION ICI
       quantite: json['quantite'] ?? 1,
       prixUnitaire: (json['prix_unitaire'] ?? 0).toDouble(),
       tissus: (json['tissus'] as List?)
               ?.map((t) => CommandeTissu.fromJson(t))
               .toList() ??
           [],
-      idMesure: json['id_mesure'],
+      idMesure: json['id_mesure'] is String
+          ? json['id_mesure']
+          : (json['id_mesure']?['_id']), // ← CORRECTION ICI
       note: json['note'],
       sousTotal: (json['sous_total'] ?? 0).toDouble(),
     );
@@ -121,7 +127,9 @@ class CommandeTissu {
 
   factory CommandeTissu.fromJson(Map<String, dynamic> json) {
     return CommandeTissu(
-      idTissu: json['id_tissu'] ?? '',
+      idTissu: json['id_tissu'] is String
+          ? json['id_tissu']
+          : (json['id_tissu']?['_id'] ?? ''), // ← CORRECTION ICI
       metrage: (json['metrage'] ?? 0).toDouble(),
       prixUnitaire: (json['prix_unitaire'] ?? 0).toDouble(),
       sousTotal: (json['sous_total'] ?? 0).toDouble(),
