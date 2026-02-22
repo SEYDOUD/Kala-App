@@ -95,11 +95,15 @@ exports.processPayment = async (req, res) => {
 // Récupérer les commandes du client
 exports.getCommandesByClient = async (req, res) => {
   try {
-    const commandes = await Commande.find({ id_client: req.userId })
+    const filter = req.userType === 'admin' ? {} : { id_client: req.userId };
+
+    const commandes = await Commande.find(filter)
+
       .populate([
         { path: 'items.id_modele' },
         { path: 'items.tissus.id_tissu' },
-        { path: 'items.id_mesure' }
+        { path: 'items.id_mesure' },
+        { path: 'id_client', select: 'prenom nom username email telephone' }
       ])
       .sort({ createdAt: -1 });
 
@@ -111,6 +115,31 @@ exports.getCommandesByClient = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.updateCommandeStatus = async (req, res) => {
+  try {
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux admins' });
+    }
+
+    const { statut, statut_paiement, notes_admin } = req.body;
+
+    const commande = await Commande.findByIdAndUpdate(
+      req.params.id,
+      { statut, statut_paiement, notes_admin },
+      { new: true }
+    );
+
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvée' });
+    }
+
+    res.json({ message: 'Commande mise à jour', commande });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 // Récupérer une commande par ID
 exports.getCommandeById = async (req, res) => {

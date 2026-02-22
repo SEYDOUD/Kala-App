@@ -15,7 +15,8 @@ const createCommandeValidation = [
 // Routes protégées (client uniquement)
 router.post('/', authMiddleware, checkUserType('client'), createCommandeValidation, commandeController.createCommande);
 router.post('/payment', authMiddleware, checkUserType('client'), commandeController.processPayment);
-router.get('/', authMiddleware, checkUserType('client'), commandeController.getCommandesByClient);
+router.get('/', authMiddleware, checkUserType('client', 'admin'), commandeController.getCommandesByClient);
 router.get('/:id', authMiddleware, commandeController.getCommandeById);
+router.patch('/:id/status', authMiddleware, checkUserType('admin'), commandeController.updateCommandeStatus);
 
 module.exports = router;

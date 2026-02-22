@@ -103,14 +103,18 @@ exports.createModele = async (req, res) => {
     } = req.body;
 
     // Vérifier que l'utilisateur est un prestataire
-    if (req.userType !== 'prestataire') {
+    let atelier;
+
+    if (req.userType === 'prestataire') {
+      atelier = await Atelier.findOne({ id_prestataire: req.userId });
+    } else if (req.userType === 'admin') {
+      atelier = await Atelier.findById(req.body.id_atelier);
+    } else {
+
       return res.status(403).json({
-        error: 'Seuls les prestataires peuvent créer des modèles'
+        error: 'Seuls les prestataires ou admins peuvent créer des modèles'
       });
     }
-
-    // Récupérer l'atelier du prestataire
-    const atelier = await Atelier.findOne({ id_prestataire: req.userId });
     
     if (!atelier) {
       return res.status(404).json({
@@ -165,8 +169,8 @@ exports.updateModele = async (req, res) => {
       });
     }
 
-    // Vérifier que l'utilisateur est le propriétaire
-    if (modele.id_atelier.id_prestataire.toString() !== req.userId.toString()) {
+    // Vérifier que l'utilisateur est le propriétaire (ou admin)
+    if (req.userType !== 'admin' && modele.id_atelier.id_prestataire.toString() !== req.userId.toString()) {
       return res.status(403).json({
         error: 'Non autorisé à modifier ce modèle'
       });
@@ -200,8 +204,8 @@ exports.deleteModele = async (req, res) => {
       });
     }
 
-    // Vérifier que l'utilisateur est le propriétaire
-    if (modele.id_atelier.id_prestataire.toString() !== req.userId.toString()) {
+    // Vérifier que l'utilisateur est le propriétaire (ou admin)
+    if (req.userType !== 'admin' && modele.id_atelier.id_prestataire.toString() !== req.userId.toString()) {
       return res.status(403).json({
         error: 'Non autorisé à supprimer ce modèle'
       });

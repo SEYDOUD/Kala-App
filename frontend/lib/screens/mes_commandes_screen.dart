@@ -7,6 +7,7 @@ import 'commande_detail_screen.dart';
 import 'panier_screen.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import '../models/commande_model.dart';
 
 class MesCommandesScreen extends StatefulWidget {
   const MesCommandesScreen({Key? key}) : super(key: key);
@@ -145,7 +146,7 @@ class _MesCommandesScreenState extends State<MesCommandesScreen> {
     );
   }
 
-  Widget _buildCommandeCard(BuildContext context, commande) {
+  Widget _buildCommandeCard(BuildContext context, CommandeModel commande) {
     final isEnCours =
         commande.statut != 'livree' && commande.statut != 'annulee';
     final statusColor = isEnCours ? const Color(0xFFFFA500) : Colors.green;
@@ -276,7 +277,7 @@ class _MesCommandesScreenState extends State<MesCommandesScreen> {
                         border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: Text(
-                        '${commande.items.fold<int>(0, (sum, item) => sum + item.quantite)}',
+                        '${commande.items.fold<int>(0, (int sum, CommandeItem item) => sum + item.quantite)}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
