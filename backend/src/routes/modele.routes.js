@@ -39,4 +39,23 @@ router.delete(
   modeleController.deleteModele
 );
 
+// Route protégée admin (liste complète)
+router.get(
+  '/admin/all',
+  authMiddleware,
+  checkUserType('admin'),
+  modeleController.getAllModelesForAdmin
+);
+
+router.get(
+  '/admin/ateliers',
+  authMiddleware,
+  checkUserType('admin'),
+  modeleController.getAllAteliersForAdmin
+);
+
+router.get('/:id', modeleController.getModeleById);
+
+
+
 module.exports = router;

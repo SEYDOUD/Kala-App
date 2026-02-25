@@ -33,3 +33,24 @@ export async function loginAdmin(username, password) {
     body: JSON.stringify({ username, password }),
   });
 }
+
+export async function uploadSingleImage(file) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_URL}/api/upload/single`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Erreur upload image');
+  }
+
+  return data;
+}

@@ -89,6 +89,43 @@ exports.updateTissu = async (req, res) => {
   }
 };
 
+// Récupérer tous les tissus (admin, actifs + inactifs)
+exports.getAllTissusForAdmin = async (req, res) => {
+  try {
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Seuls les admins peuvent voir tous les tissus' });
+    }
+
+    const { genre, search, page = 1, limit = 100 } = req.query;
+
+    const filter = {};
+    if (genre) filter.genre = genre;
+    if (search) {
+      filter.$or = [
+        { nom: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const tissus = await Tissu.find(filter)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort({ createdAt: -1 });
+
+    const total = await Tissu.countDocuments(filter);
+
+    res.json({
+      tissus,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: Number(page)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 // Supprimer un tissu
 exports.deleteTissu = async (req, res) => {
   try {

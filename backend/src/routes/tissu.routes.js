@@ -11,5 +11,6 @@ router.get('/:id', tissuController.getTissuById);
 router.post('/', authMiddleware, tissuController.createTissu);
 router.put('/:id', authMiddleware, tissuController.updateTissu);
 router.delete('/:id', authMiddleware, tissuController.deleteTissu);
+router.get('/admin/all', authMiddleware, tissuController.getAllTissusForAdmin);
 
 module.exports = router;

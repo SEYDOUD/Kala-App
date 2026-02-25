@@ -193,6 +193,56 @@ exports.updateModele = async (req, res) => {
   }
 };
 
+// Obtenir tous les modèles pour admin (actifs + inactifs)
+exports.getAllModelesForAdmin = async (req, res) => {
+  try {
+    const { page = 1, limit = 100, genre, search, atelier } = req.query;
+
+    const filter = {};
+    if (genre) filter.genre = genre;
+    if (atelier) filter.id_atelier = atelier;
+    if (search) filter.$text = { $search: search };
+
+    const modeles = await Modele.find(filter)
+      .populate({
+        path: 'id_atelier',
+        select: 'nom_atelier description',
+      })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort({ createdAt: -1 });
+
+    const total = await Modele.countDocuments(filter);
+
+    res.json({
+      modeles,
+      totalPages: Math.ceil(total / limit),
+      currentPage: Number(page),
+      total
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Obtenir la liste des ateliers pour admin
+exports.getAllAteliersForAdmin = async (req, res) => {
+  try {
+    const ateliers = await Atelier.find({})
+      .select('nom_atelier description adresse')
+      .sort({ nom_atelier: 1 });
+
+    res.json({
+      ateliers,
+      total: ateliers.length,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 // Supprimer un modèle (protégé - prestataire uniquement)
 exports.deleteModele = async (req, res) => {
   try {
