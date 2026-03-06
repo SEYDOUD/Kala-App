@@ -533,3 +533,46 @@ button.danger { background: #b91c1c; }
   border: 1px solid rgba(43, 26, 10, 0.2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
+
+.charts-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.chart-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chart-head span {
+  color: #8a704f;
+  font-size: 0.85rem;
+}
+
+.chart-card svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-x-label {
+  fill: #8a704f;
+  font-size: 11px;
+}
