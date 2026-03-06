@@ -190,6 +190,64 @@ a { color: inherit; text-decoration: none; }
 .revenue-top p { margin: 0; font-size: 2.9rem; font-weight: 800; }
 .revenue-bottom { padding: 14px 22px; color: #9a6d00; font-weight: 700; font-size:.95rem; }
 
+.charts-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.chart-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chart-head span {
+  color: #8a704f;
+  font-size: 0.85rem;
+}
+
+.chart-card svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+
+.chart-axis-line {
+  stroke: #d8c6ab;
+}
+
+.chart-grid-line {
+  stroke: #eee1ce;
+  stroke-dasharray: 3 3;
+}
+
+.chart-y-label {
+  fill: #8a704f;
+  font-size: 10px;
+}
+
+.chart-x-label {
+  fill: #8a704f;
+  font-size: 11px;
+}
+
 .panel {
   margin-top: 12px;
   background: var(--surface);

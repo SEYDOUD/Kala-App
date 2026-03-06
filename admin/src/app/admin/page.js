@@ -142,7 +142,6 @@ export default function DashboardPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [dailySeries, setDailySeries] = useState(buildDailySeries([]));
 
-
   const dateText = useMemo(
     () => new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     []
