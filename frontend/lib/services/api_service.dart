@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
@@ -7,6 +8,7 @@ class ApiService {
   static Future<Map<String, dynamic>> get(
     String endpoint, {
     String? token,
+    Duration? timeout,
   }) async {
     final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
 
@@ -17,7 +19,7 @@ class ApiService {
 
     try {
       final response =
-          await http.get(url, headers: headers).timeout(AppConfig.apiTimeout);
+          await http.get(url, headers: headers).timeout(timeout ?? AppConfig.apiTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body);
@@ -25,6 +27,8 @@ class ApiService {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Erreur serveur');
       }
+    } on TimeoutException {
+      throw Exception('Timeout API: la requete a pris trop de temps');
     } catch (e) {
       throw Exception('Erreur: $e');
     }
@@ -35,6 +39,7 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> data, {
     String? token,
+    Duration? timeout,
   }) async {
     final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
 
@@ -46,7 +51,7 @@ class ApiService {
     try {
       final response = await http
           .post(url, headers: headers, body: jsonEncode(data))
-          .timeout(AppConfig.apiTimeout);
+          .timeout(timeout ?? AppConfig.apiTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body);
@@ -54,6 +59,8 @@ class ApiService {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Erreur serveur');
       }
+    } on TimeoutException {
+      throw Exception('Timeout API: la requete a pris trop de temps');
     } catch (e) {
       throw Exception('Erreur: $e');
     }
@@ -64,6 +71,7 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> data, {
     String? token,
+    Duration? timeout,
   }) async {
     final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
 
@@ -75,7 +83,7 @@ class ApiService {
     try {
       final response = await http
           .put(url, headers: headers, body: jsonEncode(data))
-          .timeout(AppConfig.apiTimeout);
+          .timeout(timeout ?? AppConfig.apiTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body);
@@ -83,6 +91,8 @@ class ApiService {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Erreur serveur');
       }
+    } on TimeoutException {
+      throw Exception('Timeout API: la requete a pris trop de temps');
     } catch (e) {
       throw Exception('Erreur: $e');
     }
@@ -93,6 +103,7 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> data, {
     String? token,
+    Duration? timeout,
   }) async {
     final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
 
@@ -104,7 +115,7 @@ class ApiService {
     try {
       final response = await http
           .patch(url, headers: headers, body: jsonEncode(data))
-          .timeout(AppConfig.apiTimeout);
+          .timeout(timeout ?? AppConfig.apiTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body);
@@ -112,6 +123,8 @@ class ApiService {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Erreur serveur');
       }
+    } on TimeoutException {
+      throw Exception('Timeout API: la requete a pris trop de temps');
     } catch (e) {
       throw Exception('Erreur: $e');
     }
@@ -121,6 +134,7 @@ class ApiService {
   static Future<Map<String, dynamic>> delete(
     String endpoint, {
     String? token,
+    Duration? timeout,
   }) async {
     final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
 
@@ -132,7 +146,7 @@ class ApiService {
     try {
       final response = await http
           .delete(url, headers: headers)
-          .timeout(AppConfig.apiTimeout);
+          .timeout(timeout ?? AppConfig.apiTimeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body);
@@ -140,6 +154,8 @@ class ApiService {
         final error = jsonDecode(response.body);
         throw Exception(error['error'] ?? 'Erreur serveur');
       }
+    } on TimeoutException {
+      throw Exception('Timeout API: la requete a pris trop de temps');
     } catch (e) {
       throw Exception('Erreur: $e');
     }

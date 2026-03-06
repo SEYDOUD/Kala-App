@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 import '../providers/mesure_provider.dart';
 import '../providers/panier_provider.dart';
-import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import '../widgets/note_commande_dialog.dart';
 import 'panier_screen.dart';
@@ -15,6 +16,8 @@ class MesureManuelScreen extends StatefulWidget {
   final double poidsKg;
   final int age;
   final bool isModification;
+  final Map<String, double>? initialMesures;
+  final bool isPrediction;
 
   const MesureManuelScreen({
     Key? key,
@@ -25,6 +28,8 @@ class MesureManuelScreen extends StatefulWidget {
     required this.poidsKg,
     required this.age,
     this.isModification = false,
+    this.initialMesures,
+    this.isPrediction = false,
   }) : super(key: key);
 
   @override
@@ -34,7 +39,6 @@ class MesureManuelScreen extends StatefulWidget {
 class _MesureManuelScreenState extends State<MesureManuelScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers pour toutes les mesures
   final TextEditingController _tourDeTeteController = TextEditingController();
   final TextEditingController _epauleController = TextEditingController();
   final TextEditingController _dosController = TextEditingController();
@@ -47,6 +51,33 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
 
   bool _estParDefaut = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydratePredictedMesures();
+  }
+
+  void _hydratePredictedMesures() {
+    final initialMesures = widget.initialMesures;
+    if (initialMesures == null) return;
+
+    void fillIfPresent(String key, TextEditingController controller) {
+      final value = initialMesures[key];
+      if (value == null) return;
+      controller.text = value.toStringAsFixed(1);
+    }
+
+    fillIfPresent('tour_de_tete', _tourDeTeteController);
+    fillIfPresent('epaule', _epauleController);
+    fillIfPresent('dos', _dosController);
+    fillIfPresent('ventre', _ventreController);
+    fillIfPresent('abdomen', _abdomenController);
+    fillIfPresent('cuisse', _cuisseController);
+    fillIfPresent('entre_jambe', _entreJambeController);
+    fillIfPresent('entre_pied', _entrePiedController);
+    fillIfPresent('poitrine', _poitrineController);
+  }
 
   @override
   void dispose() {
@@ -65,17 +96,15 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
   Future<void> _enregistrer() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // ─── Vérifier l'authentification ────────────────────────
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (!authProvider.isAuthenticated) {
-      // Afficher un dialog pour se connecter
       final bool? shouldLogin = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Connexion requise'),
           content: const Text(
-            'Vous devez être connecté pour enregistrer vos mesures. Voulez-vous vous connecter maintenant ?',
+            'Vous devez etre connecte pour enregistrer vos mesures. Voulez-vous vous connecter maintenant ?',
           ),
           actions: [
             TextButton(
@@ -91,21 +120,18 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
       );
 
       if (shouldLogin == true && mounted) {
-        // Aller à la page de connexion
         final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
 
-        // Si la connexion réussit, continuer l'enregistrement
         if (result == true && mounted) {
-          _enregistrer(); // Rappeler la fonction après connexion
+          _enregistrer();
         }
       }
       return;
     }
 
-    // ─── Utilisateur connecté, on continue ──────────────────
     setState(() {
       _isLoading = true;
     });
@@ -118,7 +144,7 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
       'taille_cm': widget.tailleCm,
       'poids_kg': widget.poidsKg,
       'age': widget.age,
-      'type_prise': 'manuel',
+      'type_prise': widget.isPrediction ? 'ia' : 'manuel',
       'est_par_defaut': _estParDefaut,
       if (_tourDeTeteController.text.isNotEmpty)
         'tour_de_tete': double.parse(_tourDeTeteController.text),
@@ -147,29 +173,24 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
     });
 
     if (success && mounted) {
-      // Récupérer la mesure créée (la dernière)
       final mesureCreee = mesureProvider.mesures.first;
-
-      // Sauvegarder l'ID dans le panier
-      final panierProvider =
-          Provider.of<PanierProvider>(context, listen: false);
+      final panierProvider = Provider.of<PanierProvider>(context, listen: false);
       panierProvider.updateItemMesure(widget.panierItemIndex, mesureCreee.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Mesures enregistrées avec succès !'),
+          content: Text('Mesures enregistrees avec succes !'),
           backgroundColor: Colors.green,
         ),
       );
 
-      // Si c'est une modification, retourner à la page de résumé
       if (widget.isModification) {
-        Navigator.of(context).popUntil((route) =>
-            route.settings.name == '/commande_resume' || route.isFirst);
+        Navigator.of(context).popUntil(
+          (route) => route.settings.name == '/commande_resume' || route.isFirst,
+        );
         return;
       }
 
-      // Sinon, aller à la page de note de commande (nouveau flow)
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => const PanierScreen(),
@@ -177,7 +198,6 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
         (route) => route.isFirst,
       );
 
-      // Afficher la popup après un court délai
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
           showNoteCommandeDialog(context, widget.panierItemIndex);
@@ -186,8 +206,9 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(mesureProvider.errorMessage ??
-              'Erreur lors de l\'enregistrement'),
+          content: Text(
+            mesureProvider.errorMessage ?? 'Erreur lors de l\'enregistrement',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -197,135 +218,100 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF4F4F4),
       appBar: AppBar(
         title: const Text('Mesures'),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF4F4F4),
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titre
-              const Text(
-                'Renseignez vos mesures',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Prenez vos mesures avec précision et renseignez-les ci-dessous.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Image aide visuelle
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    // Ici vous pourrez ajouter une image de silhouette
-                    Icon(
-                      widget.genre == 'homme' ? Icons.man : Icons.woman,
-                      size: 120,
-                      color: const Color(0xFFFFA500),
+              _buildHeaderCard(),
+              const SizedBox(height: 16),
+              _buildSectionCard(
+                title: 'Haut du corps',
+                subtitle: 'Mesures de tete et buste',
+                children: [
+                  _buildMesureField(
+                    label: 'Tour de tete',
+                    controller: _tourDeTeteController,
+                    icon: Icons.face_retouching_natural,
+                  ),
+                  _buildMesureField(
+                    label: 'Epaule',
+                    controller: _epauleController,
+                    icon: Icons.accessibility_new,
+                  ),
+                  _buildMesureField(
+                    label: 'Dos',
+                    controller: _dosController,
+                    icon: Icons.straighten,
+                  ),
+                  if (widget.genre == 'femme')
+                    _buildMesureField(
+                      label: 'Poitrine',
+                      controller: _poitrineController,
+                      icon: Icons.favorite_border,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.genre == 'homme'
-                          ? 'Vue de Face - Homme'
-                          : 'Vue de Face - Femme',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              const SizedBox(height: 24),
-
-              // Champs de mesures
-              _buildMesureField('Tour de tête', _tourDeTeteController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Épaule', _epauleController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Dos', _dosController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Ventre', _ventreController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Abdomen', _abdomenController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Cuisse', _cuisseController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Entre Jambe', _entreJambeController, 'cm'),
-              const SizedBox(height: 16),
-              _buildMesureField('Entre Pied', _entrePiedController, 'cm'),
-              const SizedBox(height: 16),
-
-              // Poitrine (pour femmes)
-              if (widget.genre == 'femme')
-                Column(
-                  children: [
-                    _buildMesureField('Poitrine', _poitrineController, 'cm'),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-
-              // Option par défaut
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _estParDefaut,
-                      onChanged: (value) {
-                        setState(() {
-                          _estParDefaut = value ?? false;
-                        });
-                      },
-                      activeColor: const Color(0xFFFFA500),
-                    ),
-                    Expanded(
-                      child: Text(
-                        'Définir comme mesure par défaut',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 14),
+              _buildSectionCard(
+                title: 'Milieu du corps',
+                subtitle: 'Mesures de ventre',
+                children: [
+                  _buildMesureField(
+                    label: 'Ventre',
+                    controller: _ventreController,
+                    icon: Icons.radio_button_unchecked,
+                  ),
+                  _buildMesureField(
+                    label: 'Abdomen',
+                    controller: _abdomenController,
+                    icon: Icons.circle_outlined,
+                  ),
+                ],
               ),
-              const SizedBox(height: 32),
-
-              // Bouton enregistrer
+              const SizedBox(height: 14),
+              _buildSectionCard(
+                title: 'Bas du corps',
+                subtitle: 'Longueurs et jambes',
+                children: [
+                  _buildMesureField(
+                    label: 'Cuisse',
+                    controller: _cuisseController,
+                    icon: Icons.directions_walk,
+                  ),
+                  _buildMesureField(
+                    label: 'Entre jambe',
+                    controller: _entreJambeController,
+                    icon: Icons.height,
+                  ),
+                  _buildMesureField(
+                    label: 'Entre pied',
+                    controller: _entrePiedController,
+                    icon: Icons.swap_vert,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _buildDefaultCard(),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _enregistrer,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF4A000),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: _isLoading
@@ -339,8 +325,11 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
                           ),
                         )
                       : const Text(
-                          'Enregistrer',
-                          style: TextStyle(fontSize: 16),
+                          'Enregistrer les mesures',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                 ),
               ),
@@ -351,62 +340,299 @@ class _MesureManuelScreenState extends State<MesureManuelScreen> {
     );
   }
 
-  Widget _buildMesureField(
-      String label, TextEditingController controller, String unit) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF2DB),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  widget.genre == 'homme' ? Icons.man : Icons.woman,
+                  color: const Color(0xFFF4A000),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Renseignez vos mesures',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F1F1F),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.isPrediction
+                          ? 'Valeurs pre-remplies par IA, vous pouvez ajuster.'
+                          : 'Saisissez vos valeurs en centimetres.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6F6F6F),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.isPrediction)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE7BF),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'IA',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFF4A000),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildInfoChip('${widget.tailleCm.toStringAsFixed(0)} cm'),
+              _buildInfoChip('${widget.poidsKg.toStringAsFixed(0)} kg'),
+              _buildInfoChip('${widget.age} ans'),
+              _buildInfoChip(widget.genre == 'homme' ? 'Homme' : 'Femme'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE3E3E3)),
+      ),
+      child: Text(
+        value,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF454545),
         ),
-        const SizedBox(height: 8),
-        Row(
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF222222),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF7A7A7A),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFE5B5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.star_border,
+            color: Color(0xFFF4A000),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Definir comme mesure par defaut',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF4A4A4A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Switch(
+            value: _estParDefaut,
+            onChanged: (value) {
+              setState(() {
+                _estParDefaut = value;
+              });
+            },
+            activeColor: const Color(0xFFF4A000),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMesureField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
+        ),
+        child: Row(
           children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1D7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 19,
+                color: const Color(0xFFF4A000),
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2F2F2F),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 98,
               child: TextFormField(
                 controller: controller,
-                keyboardType: TextInputType.number,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
                 decoration: InputDecoration(
-                  hintText: '0',
+                  hintText: '0.0',
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE1E1E1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF4A000),
+                      width: 1.4,
+                    ),
                   ),
                 ),
                 validator: (value) {
                   if (value != null &&
                       value.isNotEmpty &&
                       double.tryParse(value) == null) {
-                    return 'Valeur invalide';
+                    return 'Invalide';
                   }
                   return null;
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFFFEFD2),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                unit,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              child: const Text(
+                'cm',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFF4A000),
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }

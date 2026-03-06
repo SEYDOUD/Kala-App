@@ -9,9 +9,19 @@ services:
       - NODE_ENV=development
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
+      - CV_SERVICE_URL=http://cv-service:8000
     volumes:
       - ./backend:/app
       - /app/node_modules
+    networks:
+      - kala-network
+    restart: unless-stopped
+
+  cv-service:
+    build: ./cv-service
+    container_name: kala-cv-service
+    ports:
+      - "8000:8000"
     networks:
       - kala-network
     restart: unless-stopped

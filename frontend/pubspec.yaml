@@ -21,6 +21,9 @@ dependencies:
 
   # HTTP & API
   http: ^1.1.2
+  camera: ^0.11.0+2
+  flutter_tts: ^4.2.3
+  image: ^4.2.0
 
   # Navigation
   go_router: ^13.0.0

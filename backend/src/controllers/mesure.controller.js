@@ -1,17 +1,17 @@
 const Mesure = require('../models/Mesure');
 
-// Récupérer toutes les mesures d'un client
+// Recuperer toutes les mesures d'un client
 exports.getMesuresByClient = async (req, res) => {
   try {
     if (req.userType !== 'client') {
       return res.status(403).json({
-        error: 'Seuls les clients peuvent accéder aux mesures'
+        error: 'Seuls les clients peuvent acceder aux mesures'
       });
     }
 
-    const mesures = await Mesure.find({ 
+    const mesures = await Mesure.find({
       id_client: req.userId,
-      actif: true 
+      actif: true
     }).sort({ est_par_defaut: -1, createdAt: -1 });
 
     res.json({
@@ -19,23 +19,22 @@ exports.getMesuresByClient = async (req, res) => {
       total: mesures.length
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des mesures:', error);
+    console.error('Erreur lors de la recuperation des mesures:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Récupérer une mesure par ID
+// Recuperer une mesure par ID
 exports.getMesureById = async (req, res) => {
   try {
     const mesure = await Mesure.findById(req.params.id);
 
     if (!mesure) {
-      return res.status(404).json({ error: 'Mesure non trouvée' });
+      return res.status(404).json({ error: 'Mesure non trouvee' });
     }
 
-    // Vérifier que c'est bien le client propriétaire
     if (mesure.id_client.toString() !== req.userId.toString()) {
-      return res.status(403).json({ error: 'Non autorisé' });
+      return res.status(403).json({ error: 'Non autorise' });
     }
 
     res.json(mesure);
@@ -44,12 +43,12 @@ exports.getMesureById = async (req, res) => {
   }
 };
 
-// Créer une nouvelle mesure
+// Creer une nouvelle mesure
 exports.createMesure = async (req, res) => {
   try {
     if (req.userType !== 'client') {
       return res.status(403).json({
-        error: 'Seuls les clients peuvent créer des mesures'
+        error: 'Seuls les clients peuvent creer des mesures'
       });
     }
 
@@ -58,7 +57,6 @@ exports.createMesure = async (req, res) => {
       id_client: req.userId
     };
 
-    // Si c'est marqué par défaut, retirer le défaut des autres
     if (mesureData.est_par_defaut) {
       await Mesure.updateMany(
         { id_client: req.userId },
@@ -70,30 +68,28 @@ exports.createMesure = async (req, res) => {
     await mesure.save();
 
     res.status(201).json({
-      message: 'Mesure créée avec succès',
+      message: 'Mesure creee avec succes',
       mesure
     });
   } catch (error) {
-    console.error('Erreur lors de la création de la mesure:', error);
+    console.error('Erreur lors de la creation de la mesure:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Mettre à jour une mesure
+// Mettre a jour une mesure
 exports.updateMesure = async (req, res) => {
   try {
     const mesure = await Mesure.findById(req.params.id);
 
     if (!mesure) {
-      return res.status(404).json({ error: 'Mesure non trouvée' });
+      return res.status(404).json({ error: 'Mesure non trouvee' });
     }
 
-    // Vérifier que c'est bien le client propriétaire
     if (mesure.id_client.toString() !== req.userId.toString()) {
-      return res.status(403).json({ error: 'Non autorisé' });
+      return res.status(403).json({ error: 'Non autorise' });
     }
 
-    // Si on met cette mesure par défaut
     if (req.body.est_par_defaut) {
       await Mesure.updateMany(
         { id_client: req.userId },
@@ -105,7 +101,7 @@ exports.updateMesure = async (req, res) => {
     await mesure.save();
 
     res.json({
-      message: 'Mesure mise à jour',
+      message: 'Mesure mise a jour',
       mesure
     });
   } catch (error) {
@@ -119,46 +115,44 @@ exports.deleteMesure = async (req, res) => {
     const mesure = await Mesure.findById(req.params.id);
 
     if (!mesure) {
-      return res.status(404).json({ error: 'Mesure non trouvée' });
+      return res.status(404).json({ error: 'Mesure non trouvee' });
     }
 
     if (mesure.id_client.toString() !== req.userId.toString()) {
-      return res.status(403).json({ error: 'Non autorisé' });
+      return res.status(403).json({ error: 'Non autorise' });
     }
 
     await mesure.deleteOne();
 
-    res.json({ message: 'Mesure supprimée' });
+    res.json({ message: 'Mesure supprimee' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Définir une mesure comme par défaut
+// Definir une mesure comme par defaut
 exports.setMesureParDefaut = async (req, res) => {
   try {
     const mesure = await Mesure.findById(req.params.id);
 
     if (!mesure) {
-      return res.status(404).json({ error: 'Mesure non trouvée' });
+      return res.status(404).json({ error: 'Mesure non trouvee' });
     }
 
     if (mesure.id_client.toString() !== req.userId.toString()) {
-      return res.status(403).json({ error: 'Non autorisé' });
+      return res.status(403).json({ error: 'Non autorise' });
     }
 
-    // Retirer le défaut des autres
     await Mesure.updateMany(
       { id_client: req.userId },
       { est_par_defaut: false }
     );
 
-    // Mettre celle-ci par défaut
     mesure.est_par_defaut = true;
     await mesure.save();
 
     res.json({
-      message: 'Mesure définie par défaut',
+      message: 'Mesure definie par defaut',
       mesure
     });
   } catch (error) {

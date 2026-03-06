@@ -18,4 +18,5 @@ class AppConfig {
 
   // Timeout
   static const Duration apiTimeout = Duration(seconds: 30);
+  static const Duration visionApiTimeout = Duration(seconds: 75);
 }

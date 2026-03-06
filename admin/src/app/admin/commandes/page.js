@@ -62,7 +62,7 @@ export default function CommandesPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
             <div>
-              <h1 className="page-title">Suivi des commandes</h1>
+              <h1 className="page-title">Suivi et livraison des commandes</h1>
               <p className="subtitle">{filtered.length} commandes au total</p>
             </div>
             <div className="icon-square">▢</div>
