@@ -206,6 +206,10 @@ async function createPawapayPaymentPage({
     ],
   };
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[pawaPay] payment_page returnUrl =', resolvedReturnUrl);
+  }
+
   const apiResponse = await callPawapay('/v2/paymentpage', payload);
   const redirectUrl =
     apiResponse?.redirectUrl ||

@@ -19,6 +19,24 @@ const APP_PUBLIC_URL =
   process.env.FRONTEND_PUBLIC_URL ||
   '';
 
+function isValidAbsoluteHttpUrl(value) {
+  if (!value) return false;
+  try {
+    const parsed = new URL(String(value));
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch (_error) {
+    return false;
+  }
+}
+
+function resolveAppPublicUrl(req) {
+  const fromQuery = req.query?.app_url;
+  if (isValidAbsoluteHttpUrl(fromQuery)) {
+    return String(fromQuery);
+  }
+  return isValidAbsoluteHttpUrl(APP_PUBLIC_URL) ? APP_PUBLIC_URL : '';
+}
+
 connectDB();
 
 const corsOptions = {
@@ -71,7 +89,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/payments/pawapay/return', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  const targetUrlJson = JSON.stringify(APP_PUBLIC_URL);
+  const targetUrlJson = JSON.stringify(resolveAppPublicUrl(req));
   res.send(`<!doctype html>
 <html>
   <head>
@@ -109,7 +127,7 @@ app.get('/api/payments/pawapay/return', (req, res) => {
 
 app.get('/api/payments/pawapay/cancel', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  const targetUrlJson = JSON.stringify(APP_PUBLIC_URL);
+  const targetUrlJson = JSON.stringify(resolveAppPublicUrl(req));
   res.send(`<!doctype html>
 <html>
   <head>
