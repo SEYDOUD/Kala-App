@@ -13,8 +13,11 @@ RUN flutter config --enable-web && \
 # Copier le reste du code
 COPY . .
 
-# Builder en mode release (sans --web-renderer qui n'existe plus)
-RUN flutter build web --release
+# URL backend injectee au build Flutter web
+ARG API_BASE_URL=http://localhost:3000
+
+# Builder en mode release
+RUN flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL}
 
 # Stage 2: Servir avec Nginx
 FROM nginx:alpine

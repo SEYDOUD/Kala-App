@@ -18,6 +18,9 @@ class CommandeService {
     required String commandeId,
     required String modePaiement,
     String? telephone,
+    String paymentFlow = 'payment_page',
+    String? returnUrl,
+    String? cancelUrl,
   }) async {
     final token = await AuthService.getToken();
     if (token == null) {
@@ -28,6 +31,9 @@ class CommandeService {
       'commandeId': commandeId,
       'mode_paiement': modePaiement,
       if (telephone != null) 'telephone': telephone,
+      'payment_flow': paymentFlow,
+      if (returnUrl != null) 'return_url': returnUrl,
+      if (cancelUrl != null) 'cancel_url': cancelUrl,
     };
 
     return await ApiService.post('/commandes/payment', data, token: token);

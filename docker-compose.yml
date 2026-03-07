@@ -10,6 +10,21 @@ services:
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - CV_SERVICE_URL=http://cv-service:8000
+      - PAWAPAY_API_KEY=${PAWAPAY_API_KEY}
+      - PAWAPAY_ENV=${PAWAPAY_ENV:-sandbox}
+      - PAWAPAY_BASE_URL=${PAWAPAY_BASE_URL}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      - APP_PUBLIC_URL=${APP_PUBLIC_URL}
+      - PAWAPAY_PAYMENT_FLOW=${PAWAPAY_PAYMENT_FLOW:-payment_page}
+      - PAWAPAY_COUNTRY=${PAWAPAY_COUNTRY:-SEN}
+      - PAWAPAY_CURRENCY=${PAWAPAY_CURRENCY:-XOF}
+      - PAWAPAY_PHONE_COUNTRY_CODE=${PAWAPAY_PHONE_COUNTRY_CODE:-221}
+      - PAWAPAY_LANGUAGE=${PAWAPAY_LANGUAGE:-FR}
+      - PAWAPAY_RETURN_URL=${PAWAPAY_RETURN_URL}
+      - PAWAPAY_CANCEL_URL=${PAWAPAY_CANCEL_URL}
+      - PAWAPAY_PROVIDER=${PAWAPAY_PROVIDER}
+      - PAWAPAY_PROVIDER_WAVE=${PAWAPAY_PROVIDER_WAVE}
+      - PAWAPAY_PROVIDER_OM=${PAWAPAY_PROVIDER_OM}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -27,7 +42,10 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:3000}
     container_name: kala-frontend
     ports:
       - "8080:80"

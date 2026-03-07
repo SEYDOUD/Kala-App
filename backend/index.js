@@ -14,6 +14,10 @@ const pawapayRoutes = require('./src/routes/pawapay.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const APP_PUBLIC_URL =
+  process.env.APP_PUBLIC_URL ||
+  process.env.FRONTEND_PUBLIC_URL ||
+  '';
 
 connectDB();
 
@@ -39,6 +43,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       modeles: '/api/modeles',
       pawapayCallbacks: '/api/callbacks/pawapay',
+      pawapayReturn: '/api/payments/pawapay/return',
+      pawapayCancel: '/api/payments/pawapay/cancel',
     },
     timestamp: new Date().toISOString(),
   });
@@ -61,6 +67,82 @@ app.get('/api/health', (req, res) => {
       name: require('mongoose').connection.name || 'Non connecte',
     },
   });
+});
+
+app.get('/api/payments/pawapay/return', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  const targetUrlJson = JSON.stringify(APP_PUBLIC_URL);
+  res.send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Paiement confirme</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; padding: 24px;">
+    <h3>Paiement traite</h3>
+    <p>Vous pouvez fermer cette fenetre.</p>
+    <script>
+      (function () {
+        const appUrl = ${targetUrlJson};
+        try {
+          const payload = {
+            source: 'pawapay',
+            type: 'return',
+            query: Object.fromEntries(new URLSearchParams(window.location.search).entries())
+          };
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(JSON.stringify(payload), '*');
+            window.opener.focus();
+          }
+        } catch (e) {}
+        setTimeout(function () {
+          window.close();
+          if (!window.closed && appUrl) {
+            window.location.href = appUrl;
+          }
+        }, 700);
+      })();
+    </script>
+  </body>
+</html>`);
+});
+
+app.get('/api/payments/pawapay/cancel', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  const targetUrlJson = JSON.stringify(APP_PUBLIC_URL);
+  res.send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Paiement annule</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; padding: 24px;">
+    <h3>Paiement annule</h3>
+    <p>Vous pouvez fermer cette fenetre.</p>
+    <script>
+      (function () {
+        const appUrl = ${targetUrlJson};
+        try {
+          const payload = {
+            source: 'pawapay',
+            type: 'cancel',
+            query: Object.fromEntries(new URLSearchParams(window.location.search).entries())
+          };
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(JSON.stringify(payload), '*');
+            window.opener.focus();
+          }
+        } catch (e) {}
+        setTimeout(function () {
+          window.close();
+          if (!window.closed && appUrl) {
+            window.location.href = appUrl;
+          }
+        }, 700);
+      })();
+    </script>
+  </body>
+</html>`);
 });
 
 app.use('/api/auth', authRoutes);

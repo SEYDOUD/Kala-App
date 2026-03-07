@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
-import '../screens/mes_commandes_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/commande_provider.dart';
+import '../screens/mes_commandes_screen.dart';
 
 class CommandeSuccesDialog extends StatelessWidget {
   final String numeroCommande;
   final String reference;
+  final String title;
+  final String description;
 
   const CommandeSuccesDialog({
     Key? key,
     required this.numeroCommande,
     required this.reference,
+    this.title = 'Commande enregistree',
+    this.description = 'Votre commande a bien ete enregistree.',
   }) : super(key: key);
 
   @override
@@ -25,7 +29,6 @@ class CommandeSuccesDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icône succès avec animation
             Container(
               width: 100,
               height: 100,
@@ -40,19 +43,24 @@ class CommandeSuccesDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Titre
-            const Text(
-              'Commande Confirmée avec Succès',
-              style: TextStyle(
+            Text(
+              title,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
-
-            // Détails
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -61,23 +69,18 @@ class CommandeSuccesDialog extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildDetailRow('N° Commande', numeroCommande),
+                  _buildDetailRow('No Commande', numeroCommande),
                   const SizedBox(height: 8),
-                  _buildDetailRow('Référence', reference),
+                  _buildDetailRow('Reference', reference),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // Bouton OK
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Fermer le dialog
                   Navigator.of(context).popUntil((route) => route.isFirst);
-
-                  // Naviguer vers la page des commandes
                   Navigator.of(context)
                       .push(
                     MaterialPageRoute(
@@ -85,7 +88,6 @@ class CommandeSuccesDialog extends StatelessWidget {
                     ),
                   )
                       .then((_) {
-                    // Recharger les commandes après navigation
                     Provider.of<CommandeProvider>(context, listen: false)
                         .loadCommandes();
                   });

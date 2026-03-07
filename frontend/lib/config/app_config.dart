@@ -2,16 +2,19 @@ class AppConfig {
   static const String appName = 'Kala App';
   static const String appVersion = '1.0.0';
 
-  // API Configuration
-  // Utiliser l'IP de la machine hôte pour accéder au backend (SEYDOU)
-  // static const String baseUrl = 'http://192.168.100.167:3000';
-  static const String baseUrl = 'http://localhost:3000';
+  // Compile-time override:
+  // flutter run/build ... --dart-define=API_BASE_URL=https://your-backend.onrender.com
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+
   static const String apiUrl = '$baseUrl/api';
 
   // Endpoints
   static const String authEndpoint = '$apiUrl/auth';
 
-  // Storage Keys
+  // Storage keys
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_data';
   static const String userTypeKey = 'user_type';
