@@ -11,6 +11,7 @@ const initialForm = {
   description: '',
   genre: 'unisexe',
   prix: '',
+  duree_conception: 7,
 };
 
 export default function ModelesPage() {
@@ -24,7 +25,14 @@ export default function ModelesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingModeleId, setEditingModeleId] = useState('');
-  const [editForm, setEditForm] = useState({ nom: '', description: '', genre: 'unisexe', prix: '', currentImageUrl: '' });
+  const [editForm, setEditForm] = useState({
+    nom: '',
+    description: '',
+    genre: 'unisexe',
+    prix: '',
+    duree_conception: 7,
+    currentImageUrl: ''
+  });
   const [editImageFile, setEditImageFile] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [modeleToDelete, setModeleToDelete] = useState(null);
@@ -104,6 +112,7 @@ export default function ModelesPage() {
       description: modele.description || '',
       genre: modele.genre || 'unisexe',
       prix: modele.prix || '',
+      duree_conception: modele.duree_conception ?? 7,
       currentImageUrl: getModeleImageUrl(modele),
     });
     setEditImageFile(null);
@@ -127,6 +136,7 @@ export default function ModelesPage() {
         description: editForm.description,
         genre: editForm.genre,
         prix: Number(editForm.prix),
+        duree_conception: Number(editForm.duree_conception) || 7,
       };
 
       if (images) {
@@ -167,6 +177,7 @@ export default function ModelesPage() {
           description: form.description,
           genre: form.genre,
           prix: Number(form.prix),
+          duree_conception: Number(form.duree_conception) || 7,
           images,
         }),
       });
@@ -301,6 +312,17 @@ export default function ModelesPage() {
                       required
                     />
                   </div>
+                  <div className="row search">
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Duree de conception (jours)"
+                      value={editForm.duree_conception}
+                      onChange={(e) => setEditForm({ ...editForm, duree_conception: e.target.value })}
+                      required
+                    />
+                    <div />
+                  </div>
                   <select value={editForm.genre} onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}>
                     <option value="homme">Homme</option>
                     <option value="femme">Femme</option>
@@ -362,6 +384,17 @@ export default function ModelesPage() {
                       onChange={(e) => setForm({ ...form, prix: e.target.value })}
                       required
                     />
+                  </div>
+                  <div className="row search">
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Duree de conception (jours)"
+                      value={form.duree_conception}
+                      onChange={(e) => setForm({ ...form, duree_conception: e.target.value })}
+                      required
+                    />
+                    <div />
                   </div>
                   <div className="row search">
                     <select value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })}>

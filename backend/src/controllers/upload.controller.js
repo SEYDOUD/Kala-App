@@ -52,6 +52,31 @@ exports.uploadMultipleImages = async (req, res) => {
   }
 };
 
+// Upload une video
+exports.uploadVideo = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'Aucune video fournie'
+      });
+    }
+
+    res.json({
+      message: 'Video uploadee avec succes',
+      video: {
+        url: req.file.path,
+        publicId: req.file.filename,
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'upload video:', error);
+    res.status(500).json({
+      error: 'Erreur lors de l\'upload de la video',
+      message: error.message
+    });
+  }
+};
+
 // Supprimer une image
 exports.deleteImage = async (req, res) => {
   try {

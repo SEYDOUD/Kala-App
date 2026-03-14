@@ -164,6 +164,9 @@ async function updateCommandeFromCallback({
     commande.statut === 'en_attente'
   ) {
     commande.statut = 'confirmee';
+    if (commande.statut_commande === 'en_attente') {
+      commande.statut_commande = 'en_cours';
+    }
     updated = true;
   }
 

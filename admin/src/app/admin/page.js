@@ -28,6 +28,16 @@ function toNumber(value) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+function normalizeStatutCommande(commande) {
+  const raw = (commande?.statut_commande || '').toLowerCase();
+  if (raw) return raw;
+  const step = (commande?.statut || '').toLowerCase();
+  if (['livree', 'terminee', 'termine'].includes(step)) return 'terminee';
+  if (step === 'annulee') return 'annulee';
+  if (step === 'en_attente') return 'en_attente';
+  return 'en_cours';
+}
+
 function buildDailySeries(commandes, dayRange = DAY_RANGE) {
   const today = startOfDay(new Date());
   const dayMap = new Map();
@@ -135,8 +145,6 @@ function LineChart({ data, dataKey, title, color, yFormatter = (value) => value 
   );
 }
 
-
-
 export default function DashboardPage() {
   const [stats, setStats] = useState({ modeles: 0, tissus: 0, commandes: 0, enCours: 0 });
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -161,12 +169,11 @@ export default function DashboardPage() {
           modeles: modeles.total || 0,
           tissus: tissus.total || 0,
           commandes: list.length,
-          enCours: list.filter((item) => item.statut === 'en_cours').length,
+          enCours: list.filter((item) => normalizeStatutCommande(item) === 'en_cours').length,
         });
         const revenue = list.reduce((sum, item) => sum + toNumber(item.montant_total), 0);
         setTotalRevenue(revenue);
         setDailySeries(buildDailySeries(list));
-
       } catch {
         // ignore fetch errors on dashboard
       }
@@ -181,33 +188,33 @@ export default function DashboardPage() {
 
         <section className="main">
           <div className="topline">
-            <span style={{ fontSize: 18 }}>✕</span>
+            <span style={{ fontSize: 18 }}>Ã¢Å“â€¢</span>
             <span className="date-text">{dateText}</span>
           </div>
 
           <h1 className="page-title">Tableau de bord</h1>
-          <p className="subtitle">Bienvenue dans votre espace d’administration KALA</p>
+          <p className="subtitle">Bienvenue dans votre espace d administration KALA</p>
 
           <div className="stats-grid">
             <Link href="/admin/modeles" className="stats-card">
-              <div>Modèles</div>
+              <div>Modeles</div>
               <p className="value">{stats.modeles}</p>
               <div className="label">Catalogue total</div>
             </Link>
             <Link href="/admin/tissus" className="stats-card">
               <div>Tissus</div>
               <p className="value">{stats.tissus}</p>
-              <div className="label">Matières disponibles</div>
+              <div className="label">Matieres disponibles</div>
             </Link>
             <Link href="/admin/commandes" className="stats-card">
               <div>Commandes</div>
               <p className="value">{stats.commandes}</p>
-              <div className="label">Total général</div>
+              <div className="label">Total general</div>
             </Link>
             <Link href="/admin/commandes" className="stats-card">
               <div>En cours</div>
               <p className="value">{stats.enCours}</p>
-              <div className="label">À traiter</div>
+              <div className="label">A traiter</div>
             </Link>
           </div>
 
@@ -216,21 +223,21 @@ export default function DashboardPage() {
               <h3>Revenu total</h3>
               <p>{formatAmount(totalRevenue)} FCFA</p>
             </div>
-            <div className="revenue-bottom">Données mises à jour depuis les commandes enregistrées</div>
+            <div className="revenue-bottom">Donnees mises a jour depuis les commandes enregistrees</div>
           </div>
 
           <div className="charts-grid">
             <LineChart
               data={dailySeries}
               dataKey="revenue"
-              title="Évolution du revenu total par jour"
+              title="Evolution du revenu total par jour"
               color="#c27a0f"
               yFormatter={formatCompact}
             />
             <LineChart
               data={dailySeries}
               dataKey="orders"
-              title="Évolution des commandes journalières"
+              title="Evolution des commandes journalieres"
               color="#2b1a0a"
               yFormatter={(value) => value}
             />

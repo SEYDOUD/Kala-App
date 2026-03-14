@@ -54,3 +54,24 @@ export async function uploadSingleImage(file) {
 
   return data;
 }
+
+export async function uploadSingleVideo(file) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+  const formData = new FormData();
+  formData.append('video', file);
+
+  const response = await fetch(`${API_URL}/api/upload/video`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Erreur upload video');
+  }
+
+  return data;
+}

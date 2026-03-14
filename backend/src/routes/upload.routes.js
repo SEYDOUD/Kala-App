@@ -3,6 +3,7 @@ const router = express.Router();
 const uploadController = require('../controllers/upload.controller');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 const upload = require('../middlewares/upload.middleware');
+const uploadVideo = require('../middlewares/uploadVideo.middleware');
 
 // Upload une seule image
 router.post(
@@ -18,6 +19,14 @@ router.post(
   authMiddleware,
   upload.array('images', 5),
   uploadController.uploadMultipleImages
+);
+
+// Upload une video
+router.post(
+  '/video',
+  authMiddleware,
+  uploadVideo.single('video'),
+  uploadController.uploadVideo
 );
 
 // Supprimer une image

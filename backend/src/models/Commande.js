@@ -58,7 +58,12 @@ const commandeSchema = new mongoose.Schema({
   },
   statut: {
     type: String,
-    enum: ['en_attente', 'confirmee', 'en_cours', 'prete', 'livree', 'annulee'],
+    enum: ['en_attente', 'confirmee', 'en_cours', 'prete', 'livree', 'terminee', 'annulee'],
+    default: 'en_attente'
+  },
+  statut_commande: {
+    type: String,
+    enum: ['en_attente', 'en_cours', 'terminee', 'annulee'],
     default: 'en_attente'
   },
   statut_paiement: {
@@ -79,13 +84,74 @@ const commandeSchema = new mongoose.Schema({
     telephone: String
   },
   date_livraison_estimee: Date,
-  notes_admin: String
+  notes_admin: String,
+  resultat_couture: {
+    photos: [{
+      type: String,
+      trim: true
+    }],
+    videos: [{
+      type: String,
+      trim: true
+    }],
+    updated_at: Date
+  },
+  commentaires_client: [{
+    texte: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    created_at: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  retours: [{
+    description: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    photos: [{
+      type: String,
+      trim: true
+    }],
+    statut: {
+      type: String,
+      enum: ['demande', 'en_traitement', 'resolu', 'rejete'],
+      default: 'demande'
+    },
+    commentaire_admin: {
+      type: String,
+      trim: true
+    },
+    created_at: {
+      type: Date,
+      default: Date.now
+    },
+    updated_at: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  validation_client: {
+    satisfait: {
+      type: Boolean,
+      default: false
+    },
+    date_validation: Date,
+    commentaire: {
+      type: String,
+      trim: true
+    }
+  }
 }, {
   timestamps: true,
   collection: 'commande'
 });
 
-// Générer le numéro de commande automatiquement AVANT validation
+// GÃƒÂ©nÃƒÂ©rer le numÃƒÂ©ro de commande automatiquement AVANT validation
 commandeSchema.pre('validate', async function(next) {
   if (!this.numero_commande) {
     const count = await mongoose.model('Commande').countDocuments();

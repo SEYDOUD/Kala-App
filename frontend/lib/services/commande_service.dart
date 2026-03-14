@@ -2,18 +2,17 @@ import 'api_service.dart';
 import 'auth_service.dart';
 
 class CommandeService {
-  // Créer une commande
   static Future<Map<String, dynamic>> createCommande(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     final token = await AuthService.getToken();
     if (token == null) {
-      throw Exception('Non authentifié');
+      throw Exception('Non authentifie');
     }
 
-    return await ApiService.post('/commandes', data, token: token);
+    return ApiService.post('/commandes', data, token: token);
   }
 
-  // Traiter le paiement
   static Future<Map<String, dynamic>> processPayment({
     required String commandeId,
     required String modePaiement,
@@ -24,7 +23,7 @@ class CommandeService {
   }) async {
     final token = await AuthService.getToken();
     if (token == null) {
-      throw Exception('Non authentifié');
+      throw Exception('Non authentifie');
     }
 
     final data = {
@@ -36,29 +35,83 @@ class CommandeService {
       if (cancelUrl != null) 'cancel_url': cancelUrl,
     };
 
-    return await ApiService.post('/commandes/payment', data, token: token);
+    return ApiService.post('/commandes/payment', data, token: token);
   }
 
-  // Récupérer les commandes du client
   static Future<Map<String, dynamic>> getCommandesByClient() async {
     final token = await AuthService.getToken();
     if (token == null) {
-      throw Exception('Non authentifié');
+      throw Exception('Non authentifie');
     }
 
-    print('🔍 Fetching commandes with token: ${token.substring(0, 20)}...');
-    final response = await ApiService.get('/commandes', token: token);
-    print('📦 Commandes reçues: $response');
-    return response;
+    return ApiService.get('/commandes', token: token);
   }
 
-  // Récupérer une commande par ID
   static Future<Map<String, dynamic>> getCommandeById(String id) async {
     final token = await AuthService.getToken();
     if (token == null) {
-      throw Exception('Non authentifié');
+      throw Exception('Non authentifie');
     }
 
-    return await ApiService.get('/commandes/$id', token: token);
+    return ApiService.get('/commandes/$id', token: token);
+  }
+
+  static Future<Map<String, dynamic>> createRetour({
+    required String commandeId,
+    required String description,
+    List<String> photos = const [],
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null) {
+      throw Exception('Non authentifie');
+    }
+
+    return ApiService.post(
+      '/commandes/$commandeId/retours',
+      {
+        'description': description,
+        'photos': photos,
+      },
+      token: token,
+    );
+  }
+
+  static Future<Map<String, dynamic>> createCommentaire({
+    required String commandeId,
+    required String texte,
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null) {
+      throw Exception('Non authentifie');
+    }
+
+    return ApiService.post(
+      '/commandes/$commandeId/commentaires',
+      {
+        'texte': texte,
+      },
+      token: token,
+    );
+  }
+
+  static Future<Map<String, dynamic>> validateSatisfaction({
+    required String commandeId,
+    bool satisfait = true,
+    String? commentaire,
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null) {
+      throw Exception('Non authentifie');
+    }
+
+    return ApiService.patch(
+      '/commandes/$commandeId/satisfaction',
+      {
+        'satisfait': satisfait,
+        if (commentaire != null && commentaire.trim().isNotEmpty)
+          'commentaire': commentaire.trim(),
+      },
+      token: token,
+    );
   }
 }

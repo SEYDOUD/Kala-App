@@ -1,5 +1,36 @@
 const crypto = require('crypto');
+const { validationResult } = require('express-validator');
 const Commande = require('../models/Commande');
+const Modele = require('../models/Modele');
+
+const MAX_RETOURS_CLIENT = 3;
+
+async function computeDefaultLivraisonDate(items) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const modeleIds = items
+    .map((item) => item?.id_modele)
+    .filter(Boolean)
+    .map((id) => id.toString());
+  if (modeleIds.length === 0) return null;
+
+  const modeles = await Modele.find({ _id: { $in: modeleIds } })
+    .select('_id duree_conception')
+    .lean();
+
+  const durations = new Map(
+    modeles.map((modele) => [String(modele._id), Number(modele.duree_conception || 0)])
+  );
+
+  let maxDays = 0;
+  for (const item of items) {
+    const days = durations.get(String(item.id_modele)) || 0;
+    if (days > maxDays) maxDays = days;
+  }
+
+  const defaultDays = maxDays > 0 ? maxDays : 7;
+  const now = new Date();
+  return new Date(now.getTime() + defaultDays * 24 * 60 * 60 * 1000);
+}
 
 const PAWAPAY_BASE_URL =
   process.env.PAWAPAY_BASE_URL ||
@@ -71,6 +102,69 @@ function isValidPawapayReturnUrl(value) {
   } catch (_error) {
     return false;
   }
+}
+
+function isCommandeTermineeStatus(status) {
+  const normalized = String(status || '').toLowerCase();
+  return ['livree', 'terminee', 'termine'].includes(normalized);
+}
+
+function computeStatutCommande(commande) {
+  if (!commande) return 'en_attente';
+
+  const stepStatus = String(commande.statut || '').toLowerCase();
+  if (stepStatus === 'annulee' || stepStatus === 'annule') {
+    return 'annulee';
+  }
+
+  if (commande.validation_client?.satisfait) {
+    return 'terminee';
+  }
+
+  const retours = Array.isArray(commande.retours) ? commande.retours : [];
+  const retoursCompletes =
+    retours.length >= MAX_RETOURS_CLIENT &&
+    retours.every((retour) => ['resolu', 'rejete'].includes(String(retour?.statut || '').toLowerCase()));
+  if (retoursCompletes) {
+    return 'terminee';
+  }
+
+  if (stepStatus === 'en_attente') {
+    return 'en_attente';
+  }
+
+  return 'en_cours';
+}
+
+function sanitizeRetourPhotos(photos) {
+  if (!Array.isArray(photos)) {
+    return [];
+  }
+
+  return photos
+    .map((photo) => String(photo || '').trim())
+    .filter((photo) => photo.length > 0)
+    .filter((photo) => isValidAbsoluteUrl(photo));
+}
+
+function sanitizeMediaUrls(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items
+    .map((item) => String(item || '').trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => isValidAbsoluteUrl(item));
+}
+
+async function populateCommandeRelations(commande) {
+  return commande.populate([
+    { path: 'items.id_modele' },
+    { path: 'items.tissus.id_tissu' },
+    { path: 'items.id_mesure' },
+    { path: 'id_client', select: 'prenom nom username email telephone' },
+  ]);
 }
 
 function resolveProvider(modePaiement) {
@@ -299,6 +393,8 @@ exports.createCommande = async (req, res) => {
       adresse_livraison,
     } = req.body;
 
+    const dateLivraisonEstimee = await computeDefaultLivraisonDate(items);
+
     const commande = new Commande({
       id_client: req.userId,
       items,
@@ -307,17 +403,15 @@ exports.createCommande = async (req, res) => {
       montant_total,
       mode_paiement,
       adresse_livraison,
+      date_livraison_estimee: dateLivraisonEstimee || undefined,
       statut: 'en_attente',
+      statut_commande: 'en_attente',
       statut_paiement: 'en_attente',
     });
 
     await commande.save();
 
-    await commande.populate([
-      { path: 'items.id_modele' },
-      { path: 'items.tissus.id_tissu' },
-      { path: 'items.id_mesure' },
-    ]);
+    await populateCommandeRelations(commande);
 
     return res.status(201).json({
       message: 'Commande creee avec succes',
@@ -397,11 +491,7 @@ exports.processPayment = async (req, res) => {
     commande.statut_paiement = 'en_attente';
     await commande.save();
 
-    await commande.populate([
-      { path: 'items.id_modele' },
-      { path: 'items.tissus.id_tissu' },
-      { path: 'items.id_mesure' },
-    ]);
+    await populateCommandeRelations(commande);
 
     return res.json({
       message:
@@ -442,6 +532,269 @@ exports.processPayment = async (req, res) => {
   }
 };
 
+exports.createCommentaireClient = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation commentaire invalide',
+        details: errors.array(),
+      });
+    }
+
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvee' });
+    }
+
+    if (commande.id_client.toString() !== req.userId.toString()) {
+      return res.status(403).json({ error: 'Non autorise' });
+    }
+
+    const normalizedStatut = String(commande.statut || '').toLowerCase();
+    const normalizedStatutCommande = String(commande.statut_commande || '').toLowerCase();
+    if (
+      normalizedStatut === 'annulee' ||
+      normalizedStatut === 'annule' ||
+      normalizedStatutCommande === 'annulee' ||
+      normalizedStatutCommande === 'annule'
+    ) {
+      return res.status(409).json({
+        error: 'Commentaire indisponible pour une commande annulee',
+      });
+    }
+
+    if (normalizedStatutCommande === 'terminee' || commande.validation_client?.satisfait) {
+      return res.status(409).json({
+        error: 'Les commentaires sont fermes apres validation',
+      });
+    }
+
+    const texte = String(req.body.texte || '').trim();
+    if (texte.length < 3) {
+      return res.status(400).json({
+        error: 'Commentaire trop court (minimum 3 caracteres)',
+      });
+    }
+
+    commande.commentaires_client = commande.commentaires_client || [];
+    commande.commentaires_client.push({
+      texte,
+      created_at: new Date(),
+    });
+
+    await commande.save();
+    await populateCommandeRelations(commande);
+
+    return res.status(201).json({
+      message: 'Commentaire enregistre',
+      commande,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la creation du commentaire:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateResultatCouture = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation resultat couture invalide',
+        details: errors.array(),
+      });
+    }
+
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvee' });
+    }
+
+    const photos = sanitizeMediaUrls(req.body.photos);
+    const videos = sanitizeMediaUrls(req.body.videos);
+
+    commande.resultat_couture = {
+      photos,
+      videos,
+      updated_at: new Date(),
+    };
+
+    await commande.save();
+    await populateCommandeRelations(commande);
+
+    return res.json({
+      message: 'Resultat couture mis a jour',
+      commande,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la mise a jour du resultat couture:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateRetourStatus = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation retour invalide',
+        details: errors.array(),
+      });
+    }
+
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvee' });
+    }
+
+    const retour = commande.retours?.id(req.params.retourId);
+    if (!retour) {
+      return res.status(404).json({ error: 'Retour non trouve' });
+    }
+
+    retour.statut = req.body.statut;
+    if (req.body.commentaire_admin !== undefined) {
+      retour.commentaire_admin = String(req.body.commentaire_admin || '').trim();
+    }
+    retour.updated_at = new Date();
+
+    commande.statut_commande = computeStatutCommande(commande);
+
+    await commande.save();
+    await populateCommandeRelations(commande);
+
+    return res.json({
+      message: 'Retour mis a jour',
+      commande,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la mise a jour du retour:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createRetour = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation retour invalide',
+        details: errors.array(),
+      });
+    }
+
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvee' });
+    }
+
+    if (commande.id_client.toString() !== req.userId.toString()) {
+      return res.status(403).json({ error: 'Non autorise' });
+    }
+
+    if (!isCommandeTermineeStatus(commande.statut)) {
+      return res.status(409).json({
+        error: 'Les retours sont disponibles uniquement pour une commande terminee',
+      });
+    }
+
+    if (commande.validation_client?.satisfait) {
+      return res.status(409).json({
+        error: 'Commande deja validee par le client, retour impossible',
+      });
+    }
+
+    const retoursActuels = Array.isArray(commande.retours) ? commande.retours.length : 0;
+    if (retoursActuels >= MAX_RETOURS_CLIENT) {
+      return res.status(409).json({
+        error: `Limite atteinte: ${MAX_RETOURS_CLIENT} retours maximum`,
+      });
+    }
+
+    const description = String(req.body.description || '').trim();
+    if (description.length < 5) {
+      return res.status(400).json({
+        error: 'Description retour trop courte (minimum 5 caracteres)',
+      });
+    }
+
+    const photos = sanitizeRetourPhotos(req.body.photos).slice(0, 5);
+
+    commande.retours = commande.retours || [];
+    commande.retours.push({
+      description,
+      photos,
+      statut: 'demande',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    commande.statut_commande = computeStatutCommande(commande);
+
+    await commande.save();
+    await populateCommandeRelations(commande);
+
+    return res.status(201).json({
+      message: 'Demande de retour enregistree',
+      commande,
+      retours_restants: Math.max(0, MAX_RETOURS_CLIENT - commande.retours.length),
+    });
+  } catch (error) {
+    console.error('Erreur lors de la creation du retour:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.validateCommandeSatisfaction = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation satisfaction invalide',
+        details: errors.array(),
+      });
+    }
+
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ error: 'Commande non trouvee' });
+    }
+
+    if (commande.id_client.toString() !== req.userId.toString()) {
+      return res.status(403).json({ error: 'Non autorise' });
+    }
+
+    if (!isCommandeTermineeStatus(commande.statut)) {
+      return res.status(409).json({
+        error: 'Validation possible uniquement pour une commande terminee',
+      });
+    }
+
+    const satisfait = req.body.satisfait !== false;
+    const commentaire = String(req.body.commentaire || '').trim();
+
+    commande.validation_client = {
+      satisfait,
+      date_validation: satisfait ? new Date() : null,
+      commentaire,
+    };
+    commande.statut_commande = computeStatutCommande(commande);
+
+    await commande.save();
+    await populateCommandeRelations(commande);
+
+    return res.json({
+      message: satisfait
+        ? 'Commande validee comme satisfaisante'
+        : 'Validation client retiree',
+      commande,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la validation client:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 // Recuperer les commandes du client
 exports.getCommandesByClient = async (req, res) => {
   try {
@@ -471,17 +824,48 @@ exports.updateCommandeStatus = async (req, res) => {
       return res.status(403).json({ error: 'Acces reserve aux admins' });
     }
 
-    const { statut, statut_paiement, notes_admin } = req.body;
+    const { statut, statut_paiement, notes_admin, statut_commande, date_livraison_estimee } = req.body;
 
-    const commande = await Commande.findByIdAndUpdate(
-      req.params.id,
-      { statut, statut_paiement, notes_admin },
-      { new: true }
-    );
-
+    const commande = await Commande.findById(req.params.id);
     if (!commande) {
       return res.status(404).json({ error: 'Commande non trouvee' });
     }
+
+    if (statut) {
+      commande.statut = statut;
+    }
+    if (statut_paiement) {
+      commande.statut_paiement = statut_paiement;
+    }
+    if (notes_admin !== undefined) {
+      commande.notes_admin = notes_admin;
+    }
+    if (date_livraison_estimee !== undefined) {
+      commande.date_livraison_estimee = date_livraison_estimee
+        ? new Date(date_livraison_estimee)
+        : null;
+    }
+
+    const allowedGlobal = ['en_attente', 'en_cours', 'annulee'];
+    const computedStatut = computeStatutCommande(commande);
+      if (
+        statut_commande &&
+        allowedGlobal.includes(statut_commande) &&
+        computedStatut !== 'terminee'
+      ) {
+        commande.statut_commande = statut_commande;
+        if (statut_commande === 'annulee') {
+          commande.statut = 'annulee';
+        }
+      } else {
+        commande.statut_commande = computedStatut;
+      }
+
+      if (commande.statut === 'annulee' || commande.statut_commande === 'annulee') {
+        commande.statut_paiement = 'rembourse';
+      }
+
+    await commande.save();
 
     return res.json({ message: 'Commande mise a jour', commande });
   } catch (error) {

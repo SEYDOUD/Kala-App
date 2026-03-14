@@ -9,6 +9,10 @@ const createModeleValidation = [
   body('nom').trim().notEmpty().withMessage('Le nom du modèle est requis'),
   body('genre').isIn(['homme', 'femme', 'unisexe']).withMessage('Genre invalide'),
   body('prix').isNumeric().withMessage('Le prix doit être un nombre'),
+  body('duree_conception')
+    .optional()
+    .isInt({ min: 1, max: 365 })
+    .withMessage('La duree de conception doit etre un entier (1-365)'),
 ];
 
 // Routes publiques
