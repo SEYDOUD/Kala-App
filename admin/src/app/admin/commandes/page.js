@@ -1,9 +1,18 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import NavBar from '@/components/NavBar';
 import RequireAdmin from '@/components/RequireAdmin';
 import { apiRequest, uploadSingleImage, uploadSingleVideo } from '@/lib/api';
+import {
+  FINANCE_STORAGE_KEY,
+  ORDERS_STORAGE_KEY,
+  createSeedFinance,
+  createSeedOrders,
+  loadStoredData,
+  saveStoredData,
+} from '@/lib/erpStorage';
 
 const STATUTS_SUIVI = [
   { value: 'en_attente', label: 'Validation' },
@@ -25,6 +34,13 @@ const RETOUR_STATUTS = [
   { value: 'en_traitement', label: 'En traitement' },
   { value: 'resolu', label: 'Resolu' },
   { value: 'rejete', label: 'Rejete' },
+];
+
+const PAYMENT_STATUSES = [
+  { value: 'en_attente', label: 'En attente' },
+  { value: 'paye', label: 'Payee' },
+  { value: 'rembourse', label: 'Remboursee' },
+  { value: 'echoue', label: 'Echoue' },
 ];
 
 function normalizeStatutCommande(commande) {
@@ -90,15 +106,182 @@ function parseUrls(text) {
     .filter(Boolean);
 }
 
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toNumber(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function computeCommandeSupplierCost(commande) {
+  if (!commande) return 0;
+  const items = Array.isArray(commande.items) ? commande.items : [];
+  return items.reduce((sum, item) => {
+    const quantite = toNumber(item?.quantite || item?.qte || 1) || 1;
+    const modeleCost = toNumber(item?.id_modele?.prix_fournisseur);
+    let total = modeleCost * quantite;
+
+    const tissus = Array.isArray(item?.tissus) ? item.tissus : [];
+    tissus.forEach((tissu) => {
+      const metrage = toNumber(tissu?.metrage || tissu?.quantite || 0);
+      const tissuCost = toNumber(tissu?.id_tissu?.prix_fournisseur);
+      total += tissuCost * metrage;
+    });
+
+    return sum + total;
+  }, 0);
+}
+
+function computeBenefice(total, fournisseur) {
+  return toNumber(total) - toNumber(fournisseur);
+}
+
+function buildManualOrderForm(category) {
+  return {
+    category,
+    article: '',
+    type_unite: 'metre',
+    quantite: '',
+    client: '',
+    montant_total: '',
+    prix_fournisseur: '',
+    justificatif: '',
+    date_commande: todayString(),
+    date_livraison_estimee: '',
+    statut: 'en_attente',
+    statut_commande: 'en_attente',
+    statut_paiement: 'en_attente',
+    note: '',
+    mode_paiement: 'especes',
+  };
+}
+
+function createManualOrderNumber(category) {
+  const prefix = category === 'tissus' ? 'TIS' : category === 'pret_a_porter' ? 'PAP' : 'SM';
+  const stamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+  const unique = String(Date.now()).slice(-4);
+  return `${prefix}-${stamp}-${unique}`;
+}
+
+function buildFinanceEntry({ source, sourceId, type, label, montant, date, payeur, mode }) {
+  return {
+    id: `ent-${Date.now()}-${sourceId}`,
+    type,
+    label,
+    montant: toNumber(montant),
+    date: date || todayString(),
+    payeur: payeur || '',
+    mode: mode || 'especes',
+    statut: 'paye',
+    justificatif: '',
+    source,
+    sourceId,
+  };
+}
+
+function buildSupplierExpense({ source, sourceId, label, montant, date, beneficiaire }) {
+  return {
+    id: `exp-${Date.now()}-${sourceId}`,
+    type: 'fournisseur',
+    label,
+    montant: toNumber(montant),
+    date: date || todayString(),
+    beneficiaire: beneficiaire || 'Fournisseur',
+    mode: 'virement',
+    statut: 'a_payer',
+    justificatif: '',
+    source,
+    sourceId,
+  };
+}
+
+function commitFinanceEntry(entry) {
+  const finance = loadStoredData(FINANCE_STORAGE_KEY, createSeedFinance);
+  const exists = finance.entries.some((item) => item.source === entry.source && item.sourceId === entry.sourceId);
+  if (exists) return;
+  finance.entries = [entry, ...finance.entries];
+  saveStoredData(FINANCE_STORAGE_KEY, finance);
+}
+
+function commitFinanceExpense(expense) {
+  const finance = loadStoredData(FINANCE_STORAGE_KEY, createSeedFinance);
+  const exists = finance.expenses.some((item) => item.source === expense.source && item.sourceId === expense.sourceId);
+  if (exists) return;
+  finance.expenses = [expense, ...finance.expenses];
+  saveStoredData(FINANCE_STORAGE_KEY, finance);
+}
+
+function syncSurMesureEntries(commandes) {
+  const finance = loadStoredData(FINANCE_STORAGE_KEY, createSeedFinance);
+  const existingEntryKeys = new Set(
+    finance.entries.map((entry) => `${entry.source || ''}:${entry.sourceId || ''}`)
+  );
+  const existingExpenseKeys = new Set(
+    finance.expenses.map((expense) => `${expense.source || ''}:${expense.sourceId || ''}`)
+  );
+  let changed = false;
+
+  commandes.forEach((commande) => {
+    if (normalizeStatutCommande(commande) !== 'terminee') return;
+    const key = `sur_mesure:${commande._id}`;
+    const clientName = `${commande.id_client?.prenom || ''} ${commande.id_client?.nom || ''}`.trim();
+    const supplierCost = computeCommandeSupplierCost(commande);
+    const benefice = computeBenefice(commande.montant_total, supplierCost);
+    const entry = buildFinanceEntry({
+      source: 'sur_mesure',
+      sourceId: commande._id,
+      type: 'sur_mesure',
+      label: `Commande ${commande.numero_commande}`,
+      montant: benefice,
+      date: commande.date_livraison_estimee || commande.createdAt?.slice(0, 10),
+      payeur: clientName,
+      mode: commande.mode_paiement,
+    });
+    if (!existingEntryKeys.has(key)) {
+      finance.entries = [entry, ...finance.entries];
+      existingEntryKeys.add(key);
+      changed = true;
+    }
+    if (supplierCost > 0 && !existingExpenseKeys.has(key)) {
+      const expense = buildSupplierExpense({
+        source: 'sur_mesure',
+        sourceId: commande._id,
+        label: `Paiement fournisseur ${commande.numero_commande}`,
+        montant: supplierCost,
+        date: commande.date_livraison_estimee || commande.createdAt?.slice(0, 10),
+        beneficiaire: 'Fournisseur',
+      });
+      finance.expenses = [expense, ...finance.expenses];
+      existingExpenseKeys.add(key);
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveStoredData(FINANCE_STORAGE_KEY, finance);
+  }
+}
+
 export default function CommandesPage() {
   const [commandes, setCommandes] = useState([]);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('');
+  const [manualOrders, setManualOrders] = useState(createSeedOrders());
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualForm, setManualForm] = useState(buildManualOrderForm('tissus'));
+  const [manualError, setManualError] = useState('');
+  const [manualUploading, setManualUploading] = useState(false);
   const [openResultatId, setOpenResultatId] = useState(null);
   const [resultatDrafts, setResultatDrafts] = useState({});
   const [detailCommande, setDetailCommande] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
 
   const dateText = useMemo(
     () =>
@@ -114,7 +297,9 @@ export default function CommandesPage() {
   const loadCommandes = async () => {
     try {
       const data = await apiRequest('/api/commandes');
-      setCommandes(data.commandes || []);
+      const list = data.commandes || [];
+      syncSurMesureEntries(list);
+      setCommandes(list);
       setError('');
     } catch (err) {
       setError(err.message);
@@ -125,16 +310,60 @@ export default function CommandesPage() {
     loadCommandes();
   }, []);
 
-  const filtered = commandes.filter((item) => {
-    const client = `${item.id_client?.prenom || ''} ${item.id_client?.nom || ''}`.toLowerCase();
+  useEffect(() => {
+    if (['sur_mesure', 'tissus', 'pret_a_porter'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab('');
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    setManualOrders(loadStoredData(ORDERS_STORAGE_KEY, createSeedOrders));
+  }, []);
+
+  useEffect(() => {
+    saveStoredData(ORDERS_STORAGE_KEY, manualOrders);
+  }, [manualOrders]);
+
+  const manualOrdersByTab = {
+    sur_mesure: manualOrders.sur_mesure || [],
+    tissus: manualOrders.tissus || [],
+    pret_a_porter: manualOrders.pret_a_porter || [],
+  };
+
+  const combinedSurMesure = [
+    ...manualOrdersByTab.sur_mesure.map((order) => ({ ...order, source: 'manual' })),
+    ...commandes,
+  ];
+
+  const filtered = combinedSurMesure.filter((item) => {
+    const numero = String(item.numero_commande || '').toLowerCase();
+    const client = item.source === 'manual'
+      ? String(item.client || '').toLowerCase()
+      : `${item.id_client?.prenom || ''} ${item.id_client?.nom || ''}`.toLowerCase();
+    return numero.includes(search.toLowerCase()) || client.includes(search.toLowerCase());
+  });
+
+  const manualList = manualOrdersByTab[activeTab] || [];
+  const filteredManual = manualList.filter((item) => {
+    const client = String(item.client || '').toLowerCase();
     return item.numero_commande?.toLowerCase().includes(search.toLowerCase()) || client.includes(search.toLowerCase());
   });
 
   const suiviCounts = STATUTS_SUIVI.reduce((acc, item) => {
-    const total = commandes.filter((c) => normalizeSuivi(c.statut) === item.value).length;
+    const total = combinedSurMesure.filter((c) => normalizeSuivi(c.statut) === item.value).length;
     acc[item.value] = total;
     return acc;
   }, {});
+
+  const isSurMesureTab = activeTab === 'sur_mesure';
+  const isTissuTab = activeTab === 'tissus';
+  const isPretTab = activeTab === 'pret_a_porter';
+  const totalCount = !activeTab ? 0 : isSurMesureTab ? filtered.length : filteredManual.length;
+  const manualBenefice = computeBenefice(manualForm.montant_total, manualForm.prix_fournisseur);
+  const manualUnitLabel = manualForm.type_unite === 'piece' ? 'pieces' : 'metres';
+  const manualItemLabel = isSurMesureTab ? 'Modele / description' : isTissuTab ? 'Tissu' : 'Produit';
 
   const updateSuivi = async (id, statut) => {
     await apiRequest(`/api/commandes/${id}/status`, {
@@ -144,11 +373,38 @@ export default function CommandesPage() {
     loadCommandes();
   };
 
-  const updateStatutCommande = async (id, statut_commande) => {
-    await apiRequest(`/api/commandes/${id}/status`, {
+  const updateStatutCommande = async (commande, statut_commande) => {
+    await apiRequest(`/api/commandes/${commande._id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ statut_commande }),
     });
+    if (statut_commande === 'terminee') {
+      const clientName = `${commande.id_client?.prenom || ''} ${commande.id_client?.nom || ''}`.trim();
+      const supplierCost = computeCommandeSupplierCost(commande);
+      const benefice = computeBenefice(commande.montant_total, supplierCost);
+      const entry = buildFinanceEntry({
+        source: 'sur_mesure',
+        sourceId: commande._id,
+        type: 'sur_mesure',
+        label: `Commande ${commande.numero_commande}`,
+        montant: benefice,
+        date: commande.date_livraison_estimee || commande.createdAt?.slice(0, 10),
+        payeur: clientName,
+        mode: commande.mode_paiement,
+      });
+      commitFinanceEntry(entry);
+      if (supplierCost > 0) {
+        const expense = buildSupplierExpense({
+          source: 'sur_mesure',
+          sourceId: commande._id,
+          label: `Paiement fournisseur ${commande.numero_commande}`,
+          montant: supplierCost,
+          date: commande.date_livraison_estimee || commande.createdAt?.slice(0, 10),
+          beneficiaire: 'Fournisseur',
+        });
+        commitFinanceExpense(expense);
+      }
+    }
     loadCommandes();
   };
 
@@ -158,6 +414,174 @@ export default function CommandesPage() {
       body: JSON.stringify({ date_livraison_estimee: dateValue || null }),
     });
     loadCommandes();
+  };
+
+  const openManualModalForm = () => {
+    const nextForm = buildManualOrderForm(activeTab);
+    if (activeTab === 'pret_a_porter') {
+      nextForm.type_unite = 'piece';
+    }
+    setManualForm(nextForm);
+    setManualError('');
+    setManualUploading(false);
+    setShowManualModal(true);
+  };
+
+  const closeManualModalForm = () => {
+    setShowManualModal(false);
+    setManualError('');
+    setManualUploading(false);
+  };
+
+  const updateManualField = (field, value) => {
+    setManualForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const uploadManualJustificatif = async (file) => {
+    if (!file) return;
+    setManualUploading(true);
+    setManualError('');
+    try {
+      const result = await uploadSingleImage(file);
+      if (result?.image?.url) {
+        setManualForm((prev) => ({ ...prev, justificatif: result.image.url }));
+      }
+    } catch (err) {
+      setManualError(err.message);
+    } finally {
+      setManualUploading(false);
+    }
+  };
+
+  const addManualFinanceEntries = (order) => {
+    const category = order.category || activeTab;
+    const entryType =
+      category === 'tissus' ? 'tissu' : category === 'pret_a_porter' ? 'pret_a_porter' : 'sur_mesure';
+    const supplierCost = toNumber(order.prix_fournisseur);
+    const benefice = computeBenefice(order.montant_total, supplierCost);
+    const entry = buildFinanceEntry({
+      source: category,
+      sourceId: order.id,
+      type: entryType,
+      label: `Commande ${order.numero_commande}`,
+      montant: benefice,
+      date: order.date_commande,
+      payeur: order.client,
+      mode: order.mode_paiement,
+    });
+    commitFinanceEntry(entry);
+    if (supplierCost > 0) {
+      const expense = buildSupplierExpense({
+        source: category,
+        sourceId: order.id,
+        label: `Paiement fournisseur ${order.numero_commande}`,
+        montant: supplierCost,
+        date: order.date_commande,
+        beneficiaire: 'Fournisseur',
+      });
+      commitFinanceExpense(expense);
+    }
+  };
+
+  const saveManualOrder = () => {
+    const category = manualForm.category;
+    const requiresArticle = category !== 'sur_mesure';
+    const requiresQuantite = category !== 'sur_mesure';
+    if (
+      !manualForm.client ||
+      !manualForm.montant_total ||
+      (requiresArticle && !manualForm.article) ||
+      (requiresQuantite && !manualForm.quantite)
+    ) {
+      setManualError('Renseigne le client, le produit, la quantite et le montant.');
+      return;
+    }
+    if (!manualForm.prix_fournisseur) {
+      setManualError('Renseigne le prix fournisseur pour calculer le benefice.');
+      return;
+    }
+
+    const benefice = computeBenefice(manualForm.montant_total, manualForm.prix_fournisseur);
+    const newOrder = {
+      id: `${category}-${Date.now()}`,
+      numero_commande: createManualOrderNumber(category),
+      article: manualForm.article,
+      type_unite: manualForm.type_unite,
+      quantite: toNumber(manualForm.quantite),
+      client: manualForm.client,
+      montant_total: toNumber(manualForm.montant_total),
+      prix_fournisseur: toNumber(manualForm.prix_fournisseur),
+      benefice,
+      justificatif: manualForm.justificatif || '',
+      date_commande: manualForm.date_commande || todayString(),
+      date_livraison_estimee: manualForm.date_livraison_estimee || '',
+      statut: manualForm.statut || 'en_attente',
+      statut_commande: manualForm.statut_commande,
+      statut_paiement: manualForm.statut_paiement,
+      note: manualForm.note || '',
+      mode_paiement: manualForm.mode_paiement || 'especes',
+      category,
+    };
+
+    setManualOrders((prev) => ({
+      ...prev,
+      [category]: [newOrder, ...(prev[category] || [])],
+    }));
+
+    if (category === 'sur_mesure') {
+      if (newOrder.statut_commande === 'terminee') {
+        addManualFinanceEntries(newOrder);
+      }
+    } else {
+      addManualFinanceEntries(newOrder);
+    }
+
+    setShowManualModal(false);
+    setManualError('');
+  };
+
+  const updateManualOrderStatus = (orderId, nextStatus) => {
+    const category = activeTab;
+    const currentOrder = manualList.find((order) => order.id === orderId);
+    setManualOrders((prev) => ({
+      ...prev,
+      [category]: (prev[category] || []).map((order) =>
+        order.id === orderId ? { ...order, statut_commande: nextStatus } : order
+      ),
+    }));
+
+    if (currentOrder && nextStatus === 'terminee' && currentOrder.category === 'sur_mesure') {
+      addManualFinanceEntries({ ...currentOrder, statut_commande: nextStatus });
+    }
+  };
+
+  const updateManualPaymentStatus = (orderId, nextStatus) => {
+    const category = activeTab;
+    setManualOrders((prev) => ({
+      ...prev,
+      [category]: (prev[category] || []).map((order) =>
+        order.id === orderId ? { ...order, statut_paiement: nextStatus } : order
+      ),
+    }));
+  };
+
+  const updateManualDeliveryDate = (orderId, dateValue) => {
+    const category = activeTab;
+    setManualOrders((prev) => ({
+      ...prev,
+      [category]: (prev[category] || []).map((order) =>
+        order.id === orderId ? { ...order, date_livraison_estimee: dateValue } : order
+      ),
+    }));
+  };
+
+  const updateManualSuivi = (orderId, statut) => {
+    setManualOrders((prev) => ({
+      ...prev,
+      sur_mesure: (prev.sur_mesure || []).map((order) =>
+        order.id === orderId ? { ...order, statut } : order
+      ),
+    }));
   };
 
   const updateRetourStatus = async (commandeId, retourId, statut) => {
@@ -199,7 +623,7 @@ export default function CommandesPage() {
   };
 
   const toggleResultat = (commande) => {
-    const id = commande._id;
+    const id = commande._id || commande.id;
     if (openResultatId === id) {
       setOpenResultatId(null);
       return;
@@ -328,28 +752,39 @@ export default function CommandesPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
             <div>
               <h1 className="page-title">Suivi et commandes</h1>
-              <p className="subtitle">{filtered.length} commandes au total</p>
+              <p className="subtitle">{totalCount} commandes au total</p>
             </div>
-            <div className="icon-square">CMD</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {activeTab && (
+                <button className="create-modele-btn" onClick={openManualModalForm}>
+                  Ajouter commande
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="stats-grid single-row">
-            {STATUTS_SUIVI.map((item) => (
-              <div className="stats-card" key={item.value}>
-                <div className="value">{suiviCounts[item.value] || 0}</div>
-                <div className="label">{item.label}</div>
+          {activeTab === 'sur_mesure' ? (
+            <div className="stats-grid single-row">
+              {STATUTS_SUIVI.map((item) => (
+                <div className="stats-card" key={item.value}>
+                  <div className="value">{suiviCounts[item.value] || 0}</div>
+                  <div className="label">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {activeTab ? (
+            <>
+              <div className="panel search-wide">
+                <input placeholder="Rechercher par numero ou client..." value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-            ))}
-          </div>
 
-          <div className="panel search-wide">
-            <input placeholder="Rechercher par numero ou client..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
+              {error ? <p className="error-text">{error}</p> : null}
 
-          {error ? <p className="error-text">{error}</p> : null}
-
-          <div className="panel table-wrap" style={{ padding: 18 }}>
-            <table className="table modern compact">
+              {activeTab === 'sur_mesure' ? (
+            <div className="panel table-wrap" style={{ padding: 18 }}>
+            <table className="table modern compact commandes-table">
               <thead>
                 <tr>
                   <th>Commande</th>
@@ -364,6 +799,8 @@ export default function CommandesPage() {
               </thead>
               <tbody>
                 {filtered.map((commande) => {
+                  const isManual = commande.source === 'manual';
+                  const commandeId = commande._id || commande.id;
                   const statutCommande = normalizeStatutCommande(commande);
                   const paiementStatutRaw = String(commande.statut_paiement || 'en_attente').toLowerCase();
                   const paiementStatut = statutCommande === 'annulee' ? 'rembourse' : paiementStatutRaw;
@@ -374,9 +811,9 @@ export default function CommandesPage() {
                       : paiementStatut === 'echoue'
                         ? 'Echoue'
                         : 'En attente';
-                  const draft = resultatDrafts[commande._id] || {};
-                  const photosCount = commande.resultat_couture?.photos?.length || 0;
-                  const videosCount = commande.resultat_couture?.videos?.length || 0;
+                  const draft = isManual ? {} : resultatDrafts[commandeId] || {};
+                  const photosCount = isManual ? 0 : commande.resultat_couture?.photos?.length || 0;
+                  const videosCount = isManual ? 0 : commande.resultat_couture?.videos?.length || 0;
                   const currentSuiviLabel = getSuiviLabel(commande.statut);
                   const nextSuivi = getNextSuiviValue(commande.statut);
                   const prevSuivi = getPrevSuiviValue(commande.statut);
@@ -384,26 +821,33 @@ export default function CommandesPage() {
                   const photoList = parseUrls(draft.photos || '');
                   const videoList = parseUrls(draft.videos || '');
                   const canChangeStatutCommande = statutCommande !== 'terminee';
+                  const clientLabel = isManual
+                    ? String(commande.client || '')
+                    : `${commande.id_client?.prenom || ''} ${commande.id_client?.nom || ''}`.trim();
 
                   return (
-                    <Fragment key={commande._id}>
+                    <Fragment key={commandeId}>
                       <tr>
                         <td>
-                          <button
-                            type="button"
-                            className="link-button"
-                            onClick={() => openDetails(commande._id)}
-                            title="Voir les details"
-                          >
-                            {commande.numero_commande}
-                          </button>
+                          {isManual ? (
+                            <span>{commande.numero_commande}</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="link-button"
+                              onClick={() => openDetails(commandeId)}
+                              title="Voir les details"
+                            >
+                              {commande.numero_commande}
+                            </button>
+                          )}
                         </td>
                         <td>
                           <span
                             className="cell-ellipsis"
-                            title={`${commande.id_client?.prenom || ''} ${commande.id_client?.nom || ''}`}
+                            title={clientLabel}
                           >
-                            {commande.id_client?.prenom} {commande.id_client?.nom}
+                            {clientLabel}
                           </span>
                         </td>
                         <td>{commande.montant_total} FCFA</td>
@@ -411,7 +855,11 @@ export default function CommandesPage() {
                           <input
                             type="date"
                             value={livraisonValue}
-                            onChange={(e) => updateDeliveryDate(commande._id, e.target.value)}
+                            onChange={(e) =>
+                              isManual
+                                ? updateManualDeliveryDate(commandeId, e.target.value)
+                                : updateDeliveryDate(commandeId, e.target.value)
+                            }
                           />
                         </td>
                         <td>
@@ -430,7 +878,11 @@ export default function CommandesPage() {
                             {paiementStatut !== 'paye' && statutCommande !== 'annulee' && (
                               <button
                                 className="secondary"
-                                onClick={() => markPaymentAsPaid(commande._id)}
+                                onClick={() =>
+                                  isManual
+                                    ? updateManualPaymentStatus(commandeId, 'paye')
+                                    : markPaymentAsPaid(commandeId)
+                                }
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -449,7 +901,10 @@ export default function CommandesPage() {
                             <button
                               className="secondary"
                               disabled={!prevSuivi}
-                              onClick={() => prevSuivi && updateSuivi(commande._id, prevSuivi)}
+                              onClick={() =>
+                                prevSuivi &&
+                                (isManual ? updateManualSuivi(commandeId, prevSuivi) : updateSuivi(commandeId, prevSuivi))
+                              }
                             >
                               Prec
                             </button>
@@ -457,7 +912,10 @@ export default function CommandesPage() {
                             <button
                               className="secondary"
                               disabled={!nextSuivi}
-                              onClick={() => nextSuivi && updateSuivi(commande._id, nextSuivi)}
+                              onClick={() =>
+                                nextSuivi &&
+                                (isManual ? updateManualSuivi(commandeId, nextSuivi) : updateSuivi(commandeId, nextSuivi))
+                              }
                             >
                               Suiv
                             </button>
@@ -483,7 +941,11 @@ export default function CommandesPage() {
                               className="status-native"
                               value={statutCommande}
                               disabled={!canChangeStatutCommande}
-                              onChange={(e) => updateStatutCommande(commande._id, e.target.value)}
+                              onChange={(e) =>
+                                isManual
+                                  ? updateManualOrderStatus(commandeId, e.target.value)
+                                  : updateStatutCommande(commande, e.target.value)
+                              }
                             >
                               {STATUTS_COMMANDE.map((statut) => (
                                 <option key={statut.value} value={statut.value}>{statut.label}</option>
@@ -492,22 +954,26 @@ export default function CommandesPage() {
                           </div>
                         </td>
                         <td>
-                          <button
-                            onClick={() => toggleResultat(commande)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 8,
-                              border: '1px solid #e2e2e2',
-                              background: '#fff',
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                            }}
-                          >
-                            Resultat ({photosCount}P/{videosCount}V)
-                          </button>
+                          {isManual ? (
+                            <span className="pill muted">Non dispo</span>
+                          ) : (
+                            <button
+                              onClick={() => toggleResultat(commande)}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: 8,
+                                border: '1px solid #e2e2e2',
+                                background: '#fff',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Resultat ({photosCount}P/{videosCount}V)
+                            </button>
+                          )}
                         </td>
                       </tr>
-                      {openResultatId === commande._id && (
+                      {!isManual && openResultatId === commandeId && (
                         <tr>
                           <td colSpan={8}>
                             <div className="panel resultat-panel" style={{ marginTop: 12 }}>
@@ -648,8 +1114,307 @@ export default function CommandesPage() {
               </tbody>
             </table>
           </div>
+              ) : (
+                <div className="panel table-wrap" style={{ padding: 18 }}>
+                  <table className="table modern compact">
+                    <thead>
+                      <tr>
+                        <th>Commande</th>
+                        <th>Client</th>
+                        <th>Total</th>
+                        <th>Livraison</th>
+                        <th>Paiement</th>
+                        <th>Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredManual.map((order) => {
+                        const paiementStatutRaw = String(order.statut_paiement || 'en_attente').toLowerCase();
+                        const paiementStatut = order.statut_commande === 'annulee' ? 'rembourse' : paiementStatutRaw;
+                        const paiementLabel = paiementStatut === 'paye'
+                          ? 'Payee'
+                          : paiementStatut === 'rembourse'
+                            ? 'Remboursee'
+                            : paiementStatut === 'echoue'
+                              ? 'Echoue'
+                              : 'En attente';
+                        const canChangeStatutCommande = order.statut_commande !== 'terminee';
+
+                        return (
+                          <tr key={order.id}>
+                            <td>{order.numero_commande}</td>
+                            <td>
+                              <span className="cell-ellipsis" title={order.client}>
+                                {order.client}
+                              </span>
+                            </td>
+                            <td>{order.montant_total} FCFA</td>
+                            <td>
+                              <input
+                                type="date"
+                                value={toDateInputValue(order.date_livraison_estimee)}
+                                onChange={(e) => updateManualDeliveryDate(order.id, e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <div className="payment-stack">
+                                <span
+                                  className={`pill ${
+                                    paiementStatut === 'paye'
+                                      ? 'success'
+                                      : paiementStatut === 'rembourse'
+                                        ? 'danger'
+                                        : 'warning'
+                                  }`}
+                                >
+                                  {paiementLabel}
+                                </span>
+                                {paiementStatut !== 'paye' && order.statut_commande !== 'annulee' && (
+                                  <button
+                                    className="secondary"
+                                    onClick={() => updateManualPaymentStatus(order.id, 'paye')}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      padding: '6px 10px',
+                                      borderRadius: 999,
+                                    }}
+                                  >
+                                    OK
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <div className="status-select" data-disabled={!canChangeStatutCommande}>
+                                <span
+                                  className={`pill ${
+                                    order.statut_commande === 'terminee'
+                                      ? 'success'
+                                      : order.statut_commande === 'annulee'
+                                        ? 'danger'
+                                        : 'warning'
+                                  }`}
+                                >
+                                  <span className="status-ellipsis">
+                                    {STATUTS_COMMANDE.find((s) => s.value === order.statut_commande)?.label || order.statut_commande}
+                                  </span>
+                                  <span className="chevron">v</span>
+                                </span>
+                                <select
+                                  className="status-native"
+                                  value={order.statut_commande}
+                                  disabled={!canChangeStatutCommande}
+                                  onChange={(e) => updateManualOrderStatus(order.id, e.target.value)}
+                                >
+                                  {STATUTS_COMMANDE.map((statut) => (
+                                    <option key={statut.value} value={statut.value}>{statut.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="panel" style={{ padding: 18 }}>
+              <p className="muted-text">Choisissez un sous-onglet dans Commandes pour afficher les listes.</p>
+            </div>
+          )}
         </section>
       </main>
+      {showManualModal && (
+        <div className="modal-overlay" onClick={closeManualModalForm}>
+          <div className="modal-card modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div>
+                <h3>
+                  Nouvelle commande{' '}
+                  {isSurMesureTab ? 'sur mesure' : isTissuTab ? 'tissu' : 'pret a porter'}
+                </h3>
+                <p className="modal-subtitle">Renseigne les informations principales</p>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              <div className="modal-section">
+                <div className="modal-section-title">Client & produit</div>
+                <div className="form-grid form-grid-wide">
+                  <div className="field-group">
+                    <label className="field-label">Client</label>
+                    <input
+                      value={manualForm.client}
+                      onChange={(event) => updateManualField('client', event.target.value)}
+                      placeholder="Nom du client"
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">{manualItemLabel}</label>
+                    <input
+                      value={manualForm.article}
+                      onChange={(event) => updateManualField('article', event.target.value)}
+                      placeholder={isSurMesureTab ? 'Description ou modele' : isTissuTab ? 'Nom du tissu' : 'Nom du produit'}
+                    />
+                  </div>
+                  {isTissuTab ? (
+                    <>
+                      <div className="field-group">
+                        <label className="field-label">Type</label>
+                        <select
+                          value={manualForm.type_unite}
+                          onChange={(event) => updateManualField('type_unite', event.target.value)}
+                        >
+                          <option value="metre">Mètre</option>
+                          <option value="piece">Pièce</option>
+                        </select>
+                      </div>
+                      <div className="field-group">
+                        <label className="field-label">Quantité ({manualUnitLabel})</label>
+                        <input
+                          type="number"
+                          value={manualForm.quantite}
+                          onChange={(event) => updateManualField('quantite', event.target.value)}
+                          placeholder={manualForm.type_unite === 'piece' ? 'Nombre de pièces' : 'Nombre de mètres'}
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                  {isPretTab ? (
+                    <div className="field-group">
+                      <label className="field-label">Quantité (pièces)</label>
+                      <input
+                        type="number"
+                        value={manualForm.quantite}
+                        onChange={(event) => updateManualField('quantite', event.target.value)}
+                        placeholder="Nombre de pièces"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <div className="modal-section-title">Paiement</div>
+                <div className="form-grid form-grid-wide">
+                  <div className="field-group">
+                    <label className="field-label">Prix total</label>
+                    <input
+                      type="number"
+                      value={manualForm.montant_total}
+                      onChange={(event) => updateManualField('montant_total', event.target.value)}
+                      placeholder="FCFA"
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Prix fournisseur</label>
+                    <input
+                      type="number"
+                      value={manualForm.prix_fournisseur}
+                      onChange={(event) => updateManualField('prix_fournisseur', event.target.value)}
+                      placeholder="FCFA"
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Bénéfice</label>
+                    <input type="number" value={manualBenefice} readOnly />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Justificatif paiement</label>
+                    <div className="upload-row">
+                      <label className="upload-btn">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            uploadManualJustificatif(event.target.files?.[0]);
+                            event.target.value = '';
+                          }}
+                        />
+                        {manualUploading ? 'Upload...' : 'Uploader'}
+                      </label>
+                      {manualForm.justificatif ? (
+                        <a href={manualForm.justificatif} target="_blank" rel="noreferrer">Voir le justificatif</a>
+                      ) : (
+                        <span className="muted-text">Aucun fichier</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <div className="modal-section-title">Dates & statuts</div>
+                <div className="form-grid form-grid-wide">
+                  <div className="field-group">
+                    <label className="field-label">Date commande</label>
+                    <input
+                      type="date"
+                      value={manualForm.date_commande}
+                      onChange={(event) => updateManualField('date_commande', event.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Date livraison</label>
+                    <input
+                      type="date"
+                      value={manualForm.date_livraison_estimee}
+                      onChange={(event) => updateManualField('date_livraison_estimee', event.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Statut commande</label>
+                    <select
+                      value={manualForm.statut_commande}
+                      onChange={(event) => updateManualField('statut_commande', event.target.value)}
+                    >
+                      {STATUTS_COMMANDE.map((statut) => (
+                        <option key={statut.value} value={statut.value}>{statut.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Statut paiement</label>
+                    <select
+                      value={manualForm.statut_paiement}
+                      onChange={(event) => updateManualField('statut_paiement', event.target.value)}
+                    >
+                      {PAYMENT_STATUSES.map((statut) => (
+                        <option key={statut.value} value={statut.value}>{statut.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <div className="modal-section-title">Note</div>
+                <div className="form-grid">
+                  <div className="field-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="field-label">Note commande</label>
+                    <textarea
+                      value={manualForm.note}
+                      onChange={(event) => updateManualField('note', event.target.value)}
+                      placeholder="Note ou informations complémentaires"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            {manualError ? <p className="error-text">{manualError}</p> : null}
+            <div className="modal-actions">
+              <button className="secondary" onClick={closeManualModalForm}>Annuler</button>
+              <button onClick={saveManualOrder}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
       {detailLoading || detailCommande || detailError ? (
         <div className="modal-overlay" onClick={closeDetails}>
           <div
@@ -733,6 +1498,10 @@ export default function CommandesPage() {
     </RequireAdmin>
   );
 }
+
+
+
+
 
 
 

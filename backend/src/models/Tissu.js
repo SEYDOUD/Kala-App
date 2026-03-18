@@ -14,6 +14,11 @@ const tissuSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  type: {
+    type: String,
+    trim: true,
+    default: 'standard'
+  },
   genre: {
     type: String,
     enum: ['homme', 'femme', 'unisexe'],
@@ -23,6 +28,11 @@ const tissuSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Le prix est requis'],
     min: [0, 'Le prix ne peut pas être négatif']
+  },
+  prix_fournisseur: {
+    type: Number,
+    min: [0, 'Le prix fournisseur ne peut pas Ãªtre nÃ©gatif'],
+    default: 0
   },
   couleur: {
     type: String,

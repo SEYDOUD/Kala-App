@@ -46,14 +46,16 @@ exports.createTissu = async (req, res) => {
       return res.status(403).json({ error: 'Seuls les admins peuvent créer des tissus' });
     }
 
-    const { nom, description, genre, prix, couleur, type_metrage, base_metrage, images } = req.body;
+    const { nom, description, genre, type, prix, prix_fournisseur, couleur, type_metrage, base_metrage, images } = req.body;
 
     const tissu = new Tissu({
       id_admin: req.userId,
       nom,
       description,
       genre,
+      type,
       prix,
+      prix_fournisseur: Number(prix_fournisseur) || 0,
       couleur,
       type_metrage,
       base_metrage,

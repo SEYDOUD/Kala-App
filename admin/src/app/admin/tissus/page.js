@@ -9,7 +9,9 @@ const emptyForm = {
   nom: '',
   description: '',
   genre: 'unisexe',
+  type: '',
   prix: '',
+  prix_fournisseur: '',
   couleur: '#d4af37',
 };
 
@@ -95,7 +97,9 @@ export default function TissusPage() {
       nom: tissu.nom || '',
       description: tissu.description || '',
       genre: tissu.genre || 'unisexe',
+      type: tissu.type || '',
       prix: tissu.prix || '',
+      prix_fournisseur: tissu.prix_fournisseur || '',
       couleur: tissu.couleur || '#d4af37',
       currentImageUrl: getTissuImageUrl(tissu),
     });
@@ -119,7 +123,9 @@ export default function TissusPage() {
         nom: editForm.nom,
         description: editForm.description,
         genre: editForm.genre,
+        type: editForm.type,
         prix: Number(editForm.prix),
+        prix_fournisseur: Number(editForm.prix_fournisseur) || 0,
         couleur: editForm.couleur,
       };
 
@@ -157,7 +163,9 @@ export default function TissusPage() {
           nom: form.nom,
           description: form.description,
           genre: form.genre,
+          type: form.type,
           prix: Number(form.prix),
+          prix_fournisseur: Number(form.prix_fournisseur) || 0,
           couleur: form.couleur,
           images,
         }),
@@ -210,8 +218,10 @@ export default function TissusPage() {
                   <th>Image</th>
                   <th>Nom</th>
                   <th>Genre</th>
+                  <th>Type</th>
                   <th>Couleur</th>
                   <th>Prix</th>
+                  <th>Prix fournisseur</th>
                   <th>Statut</th>
                   <th>Activation</th>
                   <th>Actions</th>
@@ -229,6 +239,7 @@ export default function TissusPage() {
                     </td>
                     <td>{tissu.nom}</td>
                     <td>{tissu.genre}</td>
+                    <td>{tissu.type || 'standard'}</td>
                     <td>
                       <div className="color-chip-wrap">
                         <span className="color-dot" style={{ backgroundColor: tissu.couleur || '#d4af37' }} />
@@ -236,6 +247,7 @@ export default function TissusPage() {
                       </div>
                     </td>
                     <td>{tissu.prix} FCFA</td>
+                    <td>{tissu.prix_fournisseur || 0} FCFA</td>
                     <td>
                       <span className={`pill ${tissu.actif ? 'success' : 'muted'}`}>{tissu.actif ? 'Actif' : 'Inactif'}</span>
                     </td>
@@ -302,12 +314,30 @@ export default function TissusPage() {
                     />
                   </div>
                   <div className="row search">
+                    <input
+                      type="number"
+                      placeholder="Prix fournisseur"
+                      value={editForm.prix_fournisseur}
+                      onChange={(e) => setEditForm({ ...editForm, prix_fournisseur: e.target.value })}
+                      required
+                    />
+                    <div />
+                  </div>
+                  <div className="row search">
                     <select value={editForm.genre} onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}>
                       <option value="homme">Homme</option>
                       <option value="femme">Femme</option>
                       <option value="unisexe">Unisexe</option>
                     </select>
+                    <input
+                      placeholder="Type (ex: bazin, coton)"
+                      value={editForm.type}
+                      onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    />
+                  </div>
+                  <div className="row search">
                     <input type="color" value={editForm.couleur || '#d4af37'} onChange={(e) => setEditForm({ ...editForm, couleur: e.target.value })} />
+                    <div />
                   </div>
                   <div className="row search">
                     <input type="file" accept="image/*" onChange={(e) => setEditImageFile(e.target.files?.[0] || null)} />
@@ -352,14 +382,31 @@ export default function TissusPage() {
                     />
                   </div>
                   <div className="row search">
+                    <input
+                      type="number"
+                      placeholder="Prix fournisseur"
+                      value={form.prix_fournisseur}
+                      onChange={(e) => setForm({ ...form, prix_fournisseur: e.target.value })}
+                      required
+                    />
+                    <div />
+                  </div>
+                  <div className="row search">
                     <select value={form.genre} onChange={(e) => setForm({ ...form, genre: e.target.value })}>
                       <option value="homme">Homme</option>
                       <option value="femme">Femme</option>
                       <option value="unisexe">Unisexe</option>
                     </select>
-                    <input type="color" value={form.couleur || '#d4af37'} onChange={(e) => setForm({ ...form, couleur: e.target.value })} />
+                    <input
+                      placeholder="Type (ex: bazin, coton)"
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    />
                   </div>
-                  <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+                  <div className="row search">
+                    <input type="color" value={form.couleur || '#d4af37'} onChange={(e) => setForm({ ...form, couleur: e.target.value })} />
+                    <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+                  </div>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}

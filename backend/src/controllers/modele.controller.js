@@ -97,8 +97,10 @@ exports.createModele = async (req, res) => {
       nom,
       description,
       genre,
+      type,
       duree_conception,
       prix,
+      prix_fournisseur,
       images
     } = req.body;
 
@@ -128,8 +130,10 @@ exports.createModele = async (req, res) => {
       nom,
       description,
       genre,
+      type,
       duree_conception,
       prix,
+      prix_fournisseur: Number(prix_fournisseur) || 0,
       images: images || []
     });
 

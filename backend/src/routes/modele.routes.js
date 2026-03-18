@@ -4,11 +4,16 @@ const { body } = require('express-validator');
 const modeleController = require('../controllers/modele.controller');
 const { authMiddleware, checkUserType } = require('../middlewares/auth.middleware');
 
-// Validation pour la création de modèle
+// Validation pour la creation de modele
 const createModeleValidation = [
-  body('nom').trim().notEmpty().withMessage('Le nom du modèle est requis'),
+  body('nom').trim().notEmpty().withMessage('Le nom du modele est requis'),
   body('genre').isIn(['homme', 'femme', 'unisexe']).withMessage('Genre invalide'),
-  body('prix').isNumeric().withMessage('Le prix doit être un nombre'),
+  body('type')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 40 })
+    .withMessage('Type invalide'),
+  body('prix').isNumeric().withMessage('Le prix doit etre un nombre'),
   body('duree_conception')
     .optional()
     .isInt({ min: 1, max: 365 })
@@ -20,30 +25,30 @@ router.get('/', modeleController.getAllModeles);
 router.get('/:id', modeleController.getModeleById);
 router.get('/atelier/:atelierId', modeleController.getModelesByAtelier);
 
-// Routes protégées (prestataire uniquement)
+// Routes protegees (prestataire uniquement)
 router.post(
-  '/', 
-  authMiddleware, 
+  '/',
+  authMiddleware,
   checkUserType('prestataire', 'admin'),
   createModeleValidation,
   modeleController.createModele
 );
 
 router.put(
-  '/:id', 
-  authMiddleware, 
+  '/:id',
+  authMiddleware,
   checkUserType('prestataire', 'admin'),
   modeleController.updateModele
 );
 
 router.delete(
-  '/:id', 
-  authMiddleware, 
+  '/:id',
+  authMiddleware,
   checkUserType('prestataire', 'admin'),
   modeleController.deleteModele
 );
 
-// Route protégée admin (liste complète)
+// Route protegee admin (liste complete)
 router.get(
   '/admin/all',
   authMiddleware,
@@ -59,7 +64,5 @@ router.get(
 );
 
 router.get('/:id', modeleController.getModeleById);
-
-
 
 module.exports = router;

@@ -10,7 +10,9 @@ const initialForm = {
   nom: '',
   description: '',
   genre: 'unisexe',
+  type: '',
   prix: '',
+  prix_fournisseur: '',
   duree_conception: 7,
 };
 
@@ -29,7 +31,9 @@ export default function ModelesPage() {
     nom: '',
     description: '',
     genre: 'unisexe',
+    type: '',
     prix: '',
+    prix_fournisseur: '',
     duree_conception: 7,
     currentImageUrl: ''
   });
@@ -111,7 +115,9 @@ export default function ModelesPage() {
       nom: modele.nom || '',
       description: modele.description || '',
       genre: modele.genre || 'unisexe',
+      type: modele.type || '',
       prix: modele.prix || '',
+      prix_fournisseur: modele.prix_fournisseur || '',
       duree_conception: modele.duree_conception ?? 7,
       currentImageUrl: getModeleImageUrl(modele),
     });
@@ -135,7 +141,9 @@ export default function ModelesPage() {
         nom: editForm.nom,
         description: editForm.description,
         genre: editForm.genre,
+        type: editForm.type,
         prix: Number(editForm.prix),
+        prix_fournisseur: Number(editForm.prix_fournisseur) || 0,
         duree_conception: Number(editForm.duree_conception) || 7,
       };
 
@@ -176,7 +184,9 @@ export default function ModelesPage() {
           nom: form.nom,
           description: form.description,
           genre: form.genre,
+          type: form.type,
           prix: Number(form.prix),
+          prix_fournisseur: Number(form.prix_fournisseur) || 0,
           duree_conception: Number(form.duree_conception) || 7,
           images,
         }),
@@ -227,7 +237,9 @@ export default function ModelesPage() {
                   <th>Image</th>
                   <th>Nom</th>
                   <th>Genre</th>
+                  <th>Type</th>
                   <th>Prix</th>
+                  <th>Prix fournisseur</th>
                   <th>Statut</th>
                   <th>Activation</th>
                   <th>Actions</th>
@@ -245,7 +257,9 @@ export default function ModelesPage() {
                     </td>
                     <td>{modele.nom}</td>
                     <td>{modele.genre}</td>
+                    <td>{modele.type || 'standard'}</td>
                     <td>{modele.prix} FCFA</td>
+                    <td>{modele.prix_fournisseur || 0} FCFA</td>
                     <td>
                       <span className={`pill ${modele.actif ? 'success' : 'muted'}`}>{modele.actif ? 'Actif' : 'Inactif'}</span>
                     </td>
@@ -315,6 +329,16 @@ export default function ModelesPage() {
                   <div className="row search">
                     <input
                       type="number"
+                      placeholder="Prix fournisseur"
+                      value={editForm.prix_fournisseur}
+                      onChange={(e) => setEditForm({ ...editForm, prix_fournisseur: e.target.value })}
+                      required
+                    />
+                    <div />
+                  </div>
+                  <div className="row search">
+                    <input
+                      type="number"
                       min="1"
                       placeholder="Duree de conception (jours)"
                       value={editForm.duree_conception}
@@ -323,11 +347,18 @@ export default function ModelesPage() {
                     />
                     <div />
                   </div>
-                  <select value={editForm.genre} onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}>
-                    <option value="homme">Homme</option>
-                    <option value="femme">Femme</option>
-                    <option value="unisexe">Unisexe</option>
-                  </select>
+                  <div className="row search">
+                    <select value={editForm.genre} onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}>
+                      <option value="homme">Homme</option>
+                      <option value="femme">Femme</option>
+                      <option value="unisexe">Unisexe</option>
+                    </select>
+                    <input
+                      placeholder="Type (ex: costume, robe)"
+                      value={editForm.type}
+                      onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    />
+                  </div>
                   <div className="row search">
                     <input
                       type="file"
@@ -388,6 +419,16 @@ export default function ModelesPage() {
                   <div className="row search">
                     <input
                       type="number"
+                      placeholder="Prix fournisseur"
+                      value={form.prix_fournisseur}
+                      onChange={(e) => setForm({ ...form, prix_fournisseur: e.target.value })}
+                      required
+                    />
+                    <div />
+                  </div>
+                  <div className="row search">
+                    <input
+                      type="number"
                       min="1"
                       placeholder="Duree de conception (jours)"
                       value={form.duree_conception}
@@ -402,7 +443,15 @@ export default function ModelesPage() {
                       <option value="femme">Femme</option>
                       <option value="unisexe">Unisexe</option>
                     </select>
+                    <input
+                      placeholder="Type (ex: costume, robe)"
+                      value={form.type}
+                      onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    />
+                  </div>
+                  <div className="row search">
                     <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+                    <div />
                   </div>
                   <textarea
                     placeholder="Description"
